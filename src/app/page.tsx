@@ -62,8 +62,8 @@ export default function EduTubePage() {
     setVideoUrl(submittedVideoUrl);
 
     toast({
-      title: "Processing Video...",
-      description: "Fetching transcript and generating content. This may take a moment.",
+      title: "🚀 Processing Video...",
+      description: "Fetching transcript and conjuring AI magic. This might take a moment!",
     });
 
     const result: ProcessedVideoData = await processVideoUrl(submittedVideoUrl);
@@ -71,8 +71,8 @@ export default function EduTubePage() {
     if (result.error || !result.summary) { // Check for summary as a primary success indicator for dependent steps
       setError(result.error || "An unknown error occurred during processing.");
       toast({
-        title: "Error Processing Video",
-        description: result.error || "Failed to process the video.",
+        title: "😕 Error Processing Video",
+        description: result.error || "Failed to process the video. Please check the URL or try another.",
         variant: "destructive",
       });
       setSummary(null); // Ensure summary is null on error
@@ -82,7 +82,7 @@ export default function EduTubePage() {
     } else {
       setSummary(result.summary);
       toast({
-        title: "Summary Generated!",
+        title: "✅ Summary Generated!",
         description: "Video summary successfully created.",
         className: "bg-primary text-primary-foreground",
       });
@@ -90,13 +90,13 @@ export default function EduTubePage() {
       if (result.flashcards && result.flashcards.length > 0) {
         setFlashcards(result.flashcards);
         toast({
-          title: "Flashcards Ready!",
+          title: "✨ Flashcards Ready!",
           description: "Flashcards generated from the summary.",
           className: "bg-accent text-accent-foreground",
         });
       } else if (result.summary) { // Only show flashcard error if summary was successful
          toast({
-          title: "Flashcard Generation Skipped",
+          title: "📭 Flashcard Generation Skipped",
           description: "Could not generate flashcards. The summary might be too short or an issue occurred.",
           variant: "default", className: "bg-muted text-muted-foreground" 
         });
@@ -105,13 +105,13 @@ export default function EduTubePage() {
       if (result.notes) {
         setNotes(result.notes);
         toast({
-          title: "Revision Notes Ready!",
+          title: "📝 Revision Notes Ready!",
           description: "Detailed notes generated from the summary.",
           className: "bg-accent text-accent-foreground",
         });
       } else if (result.summary) {
          toast({
-          title: "Note Generation Skipped",
+          title: "📑 Note Generation Skipped",
           description: "Could not generate notes. An issue might have occurred.",
           variant: "default", className: "bg-muted text-muted-foreground"
         });
@@ -122,13 +122,13 @@ export default function EduTubePage() {
     if (result.chapters && result.chapters.length > 0) {
       setChapters(result.chapters);
       toast({
-        title: "Chapters Identified!",
+        title: "📚 Chapters Identified!",
         description: "Video chapters and timestamps are ready.",
         className: "bg-accent text-accent-foreground",
       });
-    } else if (!result.error || !result.error.includes("transcript")) { // Don't show chapter error if transcript itself failed
+    } else if (!result.error || !result.error?.includes("transcript")) { // Don't show chapter error if transcript itself failed
        toast({
-        title: "Chapter Generation Skipped",
+        title: "📖 Chapter Generation Skipped",
         description: "Could not identify distinct chapters for this video.",
         variant: "default", className: "bg-muted text-muted-foreground"
       });
@@ -167,7 +167,7 @@ export default function EduTubePage() {
     } else {
       setFlashcards(flashcardsResult.flashcards);
       toast({
-        title: "New Flashcards Ready!",
+        title: "✨ New Flashcards Ready!",
         description: "A fresh set of flashcards has been generated.",
         className: "bg-accent text-accent-foreground",
       });
@@ -175,30 +175,34 @@ export default function EduTubePage() {
     setIsGeneratingMoreFlashcards(false);
   };
 
+  const animationClasses = "animate-in fade-in-0 slide-in-from-top-5 duration-700 ease-out";
+
   return (
-    <div className="container mx-auto min-h-screen p-4 py-8 md:p-8 font-sans">
-      <header className="mb-10 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold text-primary flex items-center justify-center">
-          <Sparkles className="mr-3 h-10 w-10" />
+    <div className="container mx-auto min-h-screen p-4 py-8 md:p-10 font-sans">
+      <header className="mb-12 text-center">
+        <h1 className="text-5xl md:text-6xl font-extrabold text-primary flex items-center justify-center">
+          <Sparkles className="mr-3 h-10 w-10 md:h-12 md:w-12 text-accent" />
           EduTube AI
         </h1>
-        <p className="mt-2 text-lg text-muted-foreground">
+        <p className="mt-3 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
           Unlock knowledge faster. Summarize YouTube videos, generate flashcards, detailed notes, chapters, and ask questions with AI.
         </p>
       </header>
 
       <main className="max-w-3xl mx-auto">
-        <UrlInputForm onSubmit={handleUrlSubmit} isLoading={isLoading} />
+        <div className="mb-10 p-6 bg-card shadow-xl rounded-lg">
+          <UrlInputForm onSubmit={handleUrlSubmit} isLoading={isLoading} />
+        </div>
 
         {isLoading && loadingStep === "processing" && (
-          <LoadingSpinner message="Processing video... generating summary, chapters, and more. Please wait." className="mt-8" />
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+            <LoadingSpinner message="AI is working its magic... this may take a few moments." className="mt-8" size={60} />
+            <p className="text-muted-foreground mt-2">Hang tight, awesome content is on its way!</p>
+          </div>
         )}
         
-        {/* More specific loading messages removed for brevity since 'processing' covers all steps.
-            Individual toasts provide feedback for each step's completion or failure. */}
-
         {error && !isLoading && !isGeneratingMoreFlashcards && ( 
-          <Alert variant="destructive" className="mt-8">
+          <Alert variant="destructive" className="mt-8 shadow-lg animate-in fade-in-0 duration-500">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Process Interrupted or Partially Failed</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
@@ -206,32 +210,52 @@ export default function EduTubePage() {
         )}
         
         {error && isGeneratingMoreFlashcards && (
-           <Alert variant="destructive" className="mt-4">
+           <Alert variant="destructive" className="mt-4 shadow-lg animate-in fade-in-0 duration-500">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Flashcard Regeneration Failed</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        {/* Display sections if their data is available */}
-        {summary && !isLoading && <SummaryDisplay summary={summary} />}
-        {chapters && videoUrl && !isLoading && <ChapterDisplay chapters={chapters} videoUrl={videoUrl} />}
-        {flashcards && !isLoading && (
-          <FlashcardViewer 
-            flashcards={flashcards} 
-            onGenerateMore={handleGenerateMoreFlashcards}
-            isGeneratingMore={isGeneratingMoreFlashcards}
-          />
+        {/* Display sections if their data is available, with animations */}
+        {summary && !isLoading && (
+          <div className={animationClasses}>
+            <SummaryDisplay summary={summary} />
+          </div>
         )}
-        {notes && !isLoading && <NoteDisplay notes={notes} videoTitle={videoTitle} />}
+        {chapters && videoUrl && !isLoading && (
+          <div className={animationClasses}>
+            <ChapterDisplay chapters={chapters} videoUrl={videoUrl} />
+          </div>
+        )}
+        {flashcards && !isLoading && (
+          <div className={animationClasses}>
+            <FlashcardViewer 
+              flashcards={flashcards} 
+              onGenerateMore={handleGenerateMoreFlashcards}
+              isGeneratingMore={isGeneratingMoreFlashcards}
+            />
+          </div>
+        )}
+        {notes && !isLoading && (
+          <div className={animationClasses}>
+            <NoteDisplay notes={notes} videoTitle={videoTitle} />
+          </div>
+        )}
         
-        {!isLoading && <QuestionAnswerSection videoSummary={summary} />}
+        {!isLoading && videoSummary && ( // Ensure videoSummary is not null before rendering Q&A
+           <div className={animationClasses}>
+            <QuestionAnswerSection videoSummary={summary} />
+           </div>
+        )}
 
       </main>
 
-      <footer className="mt-16 text-center text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} EduTube AI. Powered by GenAI.</p>
+      <footer className="mt-20 text-center text-sm text-muted-foreground">
+        <p>&copy; {new Date().getFullYear()} EduTube AI. Powered by GenAI & Next.js.</p>
+        <p>Designed with <span role="img" aria-label="heart">❤️</span> for impactful learning.</p>
       </footer>
     </div>
   );
 }
+

@@ -4,9 +4,10 @@
 import * as React from "react";
 import type { Chapter } from "@/ai/flows/generate-chapters";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ListCollapse, Link as LinkIcon } from "lucide-react";
+import { ListCollapse, Link as LinkIcon, ExternalLink } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from 'next/link';
+import { Button } from "@/components/ui/button";
 
 interface ChapterDisplayProps {
   chapters: Chapter[];
@@ -48,44 +49,50 @@ function getYouTubeWatchUrlWithTimestamp(videoUrl: string, startTimeSeconds: num
 export function ChapterDisplay({ chapters, videoUrl }: ChapterDisplayProps) {
   if (!chapters || chapters.length === 0) {
     return (
-       <Card className="mt-8 shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center text-2xl">
-            <ListCollapse className="mr-2 h-6 w-6 text-primary" />
+       <Card className="mt-8 shadow-xl rounded-lg overflow-hidden">
+        <CardHeader  className="bg-muted/30">
+          <CardTitle className="flex items-center text-2xl font-semibold">
+            <ListCollapse className="mr-3 h-7 w-7 text-primary" />
             Video Chapters
           </CardTitle>
-          <CardDescription>No chapters were generated for this video.</CardDescription>
+          <CardDescription className="text-base">No chapters were generated for this video.</CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
   return (
-    <Card className="mt-8 shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center text-2xl">
-          <ListCollapse className="mr-2 h-6 w-6 text-primary" />
+    <Card className="mt-8 shadow-xl rounded-lg overflow-hidden">
+      <CardHeader className="bg-muted/30">
+        <CardTitle className="flex items-center text-2xl font-semibold">
+          <ListCollapse className="mr-3 h-7 w-7 text-primary" />
           Video Chapters
         </CardTitle>
-        <CardDescription>Key sections of the video with timestamps. Click to jump to that part.</CardDescription>
+        <CardDescription className="text-base">Key sections of the video. Click to jump to that part on YouTube.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-72 w-full rounded-md border">
-          <ul className="p-4 space-y-3">
+      <CardContent className="p-6">
+        <ScrollArea className="h-72 w-full rounded-md border bg-background">
+          <ul className="p-4 space-y-2">
             {chapters.map((chapter, index) => (
               <li key={index} className="group">
-                <Link
-                  href={getYouTubeWatchUrlWithTimestamp(videoUrl, chapter.startTimeSeconds)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start p-3 h-auto hover:bg-accent/80 hover:text-accent-foreground transition-colors rounded-md"
+                  asChild
                 >
-                  <div className="flex-1">
-                    <span className="font-medium text-primary group-hover:underline">{formatTime(chapter.startTimeSeconds)}</span>
-                    <span className="ml-3 text-sm">{chapter.title}</span>
-                  </div>
-                  <LinkIcon className="ml-2 h-4 w-4 text-muted-foreground group-hover:text-accent-foreground transition-opacity opacity-50 group-hover:opacity-100" />
-                </Link>
+                  <Link
+                    href={getYouTubeWatchUrlWithTimestamp(videoUrl, chapter.startTimeSeconds)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between"
+                  >
+                    <div className="flex-1 text-left">
+                      <span className="font-medium text-primary group-hover:underline">{formatTime(chapter.startTimeSeconds)}</span>
+                      <span className="ml-3 text-sm text-foreground">{chapter.title}</span>
+                    </div>
+                    <ExternalLink className="ml-2 h-4 w-4 text-muted-foreground group-hover:text-accent-foreground transition-opacity opacity-70 group-hover:opacity-100" />
+                  </Link>
+                </Button>
               </li>
             ))}
           </ul>
@@ -94,4 +101,3 @@ export function ChapterDisplay({ chapters, videoUrl }: ChapterDisplayProps) {
     </Card>
   );
 }
-

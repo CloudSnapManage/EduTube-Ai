@@ -16,7 +16,7 @@ export interface ProcessedVideoData {
   flashcards: GenerateFlashcardsOutput['flashcards'] | null;
   notes: string | null;
   chapters: Chapter[] | null;
-  rawTranscript: TranscriptResponse[] | null; // Added raw transcript
+  // rawTranscript: TranscriptResponse[] | null; // Removed raw transcript
   error?: string | null; // Consolidated error message
 }
 
@@ -25,15 +25,16 @@ export async function processVideoUrl(videoUrl: string): Promise<ProcessedVideoD
   let flashcards: GenerateFlashcardsOutput['flashcards'] | null = null;
   let notes: string | null = null;
   let chapters: Chapter[] | null = null;
-  let rawTranscriptResult: TranscriptResponse[] | null = null;
+  let rawTranscriptResult: TranscriptResponse[] | null = null; // Keep for chapter generation
   let accumulatedError: string | null = null;
 
   try {
-    // 1. Get Transcript
+    // 1. Get Transcript (still needed for chapters)
     rawTranscriptResult = await getYouTubeTranscript(videoUrl);
 
     if (!rawTranscriptResult || rawTranscriptResult.length === 0) {
-      return { videoUrl, summary, flashcards, notes, chapters, rawTranscript: null, error: "Could not retrieve transcript for the video. It might be unavailable or have transcripts disabled." };
+      // Return early if transcript fails, as summary and chapters depend on it.
+      return { videoUrl, summary, flashcards, notes, chapters, error: "Could not retrieve transcript for the video. It might be unavailable or have transcripts disabled." };
     }
 
     // 2. Generate Summary
@@ -84,12 +85,12 @@ export async function processVideoUrl(videoUrl: string): Promise<ProcessedVideoD
       accumulatedError = (accumulatedError ? accumulatedError + " " : "") + "Failed to generate chapters.";
     }
 
-    return { videoUrl, summary, flashcards, notes, chapters, rawTranscript: rawTranscriptResult, error: accumulatedError };
+    return { videoUrl, summary, flashcards, notes, chapters, error: accumulatedError };
 
   } catch (error: any) {
     console.error("Error processing video URL:", error);
     // This catches errors from getYouTubeTranscript or other unexpected issues
-    return { videoUrl, summary, flashcards, notes, chapters, rawTranscript: rawTranscriptResult, error: error.message || "An unexpected error occurred during video processing." };
+    return { videoUrl, summary, flashcards, notes, chapters, error: error.message || "An unexpected error occurred during video processing." };
   }
 }
 

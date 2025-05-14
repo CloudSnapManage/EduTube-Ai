@@ -3,14 +3,14 @@
 
 import * as React from "react";
 import type { Chapter } from "@/ai/flows/generate-chapters";
-import type { TranscriptResponse } from "youtube-transcript"; // Import TranscriptResponse
+// import type { TranscriptResponse } from "youtube-transcript"; // Removed TranscriptResponse import
 import { UrlInputForm } from "@/components/edutube/UrlInputForm";
 import { SummaryDisplay } from "@/components/edutube/SummaryDisplay";
 import { FlashcardViewer } from "@/components/edutube/FlashcardViewer";
 import { NoteDisplay } from "@/components/edutube/NoteDisplay";
 import { QuestionAnswerSection } from "@/components/edutube/QuestionAnswerSection";
 import { ChapterDisplay } from "@/components/edutube/ChapterDisplay";
-import { InteractiveTranscriptDisplay } from "@/components/edutube/InteractiveTranscriptDisplay"; // Import new component
+// import { InteractiveTranscriptDisplay } from "@/components/edutube/InteractiveTranscriptDisplay"; // Removed component import
 import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
 import { processVideoUrl, createFlashcardsFromSummary, type ProcessedVideoData } from "./actions";
 import { useToast } from "@/hooks/use-toast";
@@ -28,9 +28,9 @@ export default function EduTubePage() {
   const [flashcards, setFlashcards] = React.useState<Flashcard[] | null>(null);
   const [notes, setNotes] = React.useState<string | null>(null);
   const [chapters, setChapters] = React.useState<Chapter[] | null>(null);
-  const [rawTranscript, setRawTranscript] = React.useState<TranscriptResponse[] | null>(null); // State for raw transcript
+  // const [rawTranscript, setRawTranscript] = React.useState<TranscriptResponse[] | null>(null); // Removed state for raw transcript
   const [isLoading, setIsLoading] = React.useState(false);
-  const [loadingStep, setLoadingStep] = React.useState<"" | "processing" | "summary" | "flashcards" | "notes" | "chapters" | "transcript">("");
+  const [loadingStep, setLoadingStep] = React.useState<"" | "processing" | "summary" | "flashcards" | "notes" | "chapters">(""); // Removed "transcript" from loading steps
   const [isGeneratingMoreFlashcards, setIsGeneratingMoreFlashcards] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
@@ -61,7 +61,7 @@ export default function EduTubePage() {
     setFlashcards(null);
     setNotes(null);
     setChapters(null);
-    setRawTranscript(null); // Reset raw transcript
+    // setRawTranscript(null); // Removed reset for raw transcript
     setVideoUrl(submittedVideoUrl);
 
     toast({
@@ -82,7 +82,7 @@ export default function EduTubePage() {
       setFlashcards(null);
       setNotes(null);
       setChapters(null);
-      setRawTranscript(null); // Ensure transcript is also null on error
+      // setRawTranscript(null); // Ensure transcript is also null on error
     } else {
       setSummary(result.summary);
       toast({
@@ -129,7 +129,7 @@ export default function EduTubePage() {
           description: "Video chapters and timestamps are ready.",
           className: "bg-accent text-accent-foreground",
         });
-      } else if (!result.error || !result.error?.includes("transcript")) {
+      } else if (!result.error || !result.error?.includes("transcript")) { // Keep this check as chapters depend on transcript indirectly
          toast({
           title: "📖 Chapter Generation Skipped",
           description: "Could not identify distinct chapters for this video.",
@@ -137,21 +137,7 @@ export default function EduTubePage() {
         });
       }
 
-      // Raw transcript is available if the initial fetch was successful
-      if (result.rawTranscript && result.rawTranscript.length > 0) {
-        setRawTranscript(result.rawTranscript);
-        toast({
-            title: "📜 Transcript Loaded!",
-            description: "Video transcript is ready for interaction.",
-            className: "bg-accent text-accent-foreground",
-        });
-      } else if (!result.error || !result.error?.includes("transcript")) {
-         toast({
-            title: "📄 Transcript Unavailable",
-            description: "Could not load the interactive transcript for this video.",
-            variant: "default", className: "bg-muted text-muted-foreground"
-          });
-      }
+      // Removed raw transcript specific toasts
     }
     
     if (result.error) {
@@ -241,11 +227,7 @@ export default function EduTubePage() {
             <SummaryDisplay summary={summary} />
           </div>
         )}
-        {rawTranscript && videoUrl && !isLoading && (
-          <div className={animationClasses}>
-            <InteractiveTranscriptDisplay rawTranscript={rawTranscript} videoUrl={videoUrl} />
-          </div>
-        )}
+        {/* Removed InteractiveTranscriptDisplay component */}
         {chapters && videoUrl && !isLoading && (
           <div className={animationClasses}>
             <ChapterDisplay chapters={chapters} videoUrl={videoUrl} />

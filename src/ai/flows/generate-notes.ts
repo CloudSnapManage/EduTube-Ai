@@ -2,9 +2,9 @@
 'use server';
 
 /**
- * @fileOverview This file defines a Genkit flow for generating revision notes from a video summary.
+ * @fileOverview This file defines a Genkit flow for generating detailed revision notes from a video summary.
  *
- * - generateNotes - A function that takes a video summary as input and returns structured notes.
+ * - generateNotes - A function that takes a video summary as input and returns detailed, structured notes.
  * - GenerateNotesInput - The input type for the generateNotes function.
  * - GenerateNotesOutput - The return type for the generateNotes function.
  */
@@ -20,7 +20,7 @@ const GenerateNotesInputSchema = z.object({
 export type GenerateNotesInput = z.infer<typeof GenerateNotesInputSchema>;
 
 const GenerateNotesOutputSchema = z.object({
-  notes: z.string().describe('Concise, well-structured notes suitable for quick revision, derived from the video summary. May include bullet points or numbered lists.'),
+  notes: z.string().describe('Detailed, comprehensive, and well-explained notes derived from the video summary, suitable for in-depth study. The notes should elaborate on key concepts, provide examples if applicable from the summary, and offer thorough explanations of the main ideas and arguments presented.'),
 });
 export type GenerateNotesOutput = z.infer<typeof GenerateNotesOutputSchema>;
 
@@ -32,19 +32,20 @@ const generateNotesPrompt = ai.definePrompt({
   name: 'generateNotesPrompt',
   input: {schema: GenerateNotesInputSchema},
   output: {schema: GenerateNotesOutputSchema},
-  prompt: `You are an expert academic assistant. Your task is to transform the following video summary into concise, well-structured notes suitable for quick revision.
+  prompt: `You are an expert academic assistant. Your task is to transform the following video summary into detailed, comprehensive, and well-explained notes suitable for in-depth study.
 
-Focus on extracting and clearly presenting:
-- Key concepts and definitions
-- Important takeaways and main ideas
-- Core arguments or steps, if applicable
+Focus on:
+- Elaborating on key concepts and definitions with clear explanations.
+- Providing thorough coverage of important takeaways and main ideas.
+- Expanding on core arguments or steps, offering context and detailed descriptions if available in the summary.
+- Structuring the notes logically for easy understanding and retention.
 
-Use bullet points, numbered lists, or short paragraphs where appropriate to enhance readability and structure. The notes should be easy to scan and digest.
+Use paragraphs, bullet points, or numbered lists where appropriate to present the information clearly. The notes should be significantly more detailed than a brief summary.
 
 Video Summary:
 {{{videoSummary}}}
 
-Generate the notes based on this summary.
+Generate the detailed notes based on this summary.
 `,
 });
 

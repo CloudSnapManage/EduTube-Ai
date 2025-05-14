@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, RefreshCcw, Lightbulb, CheckCircle2, BookOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCcw, Lightbulb, CheckCircle2, BookOpen, Loader2, Shuffle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Flashcard {
@@ -13,12 +13,20 @@ interface Flashcard {
 
 interface FlashcardViewerProps {
   flashcards: Flashcard[];
+  onGenerateMore: () => Promise<void>;
+  isGeneratingMore: boolean;
 }
 
-export function FlashcardViewer({ flashcards }: FlashcardViewerProps) {
+export function FlashcardViewer({ flashcards, onGenerateMore, isGeneratingMore }: FlashcardViewerProps) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isFlipped, setIsFlipped] = React.useState(false);
   const [isFlipping, setIsFlipping] = React.useState(false);
+
+  React.useEffect(() => {
+    // Reset to first card and unflip when flashcards array changes (e.g., after generating more)
+    setCurrentIndex(0);
+    setIsFlipped(false);
+  }, [flashcards]);
 
   if (!flashcards || flashcards.length === 0) {
     return (
@@ -31,6 +39,19 @@ export function FlashcardViewer({ flashcards }: FlashcardViewerProps) {
         </CardHeader>
         <CardContent>
           <p>No flashcards generated.</p>
+          <Button onClick={onGenerateMore} disabled={isGeneratingMore} className="mt-4">
+            {isGeneratingMore ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Generate Flashcards
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
     );
@@ -40,12 +61,14 @@ export function FlashcardViewer({ flashcards }: FlashcardViewerProps) {
 
   const handleNext = () => {
     setIsFlipped(false);
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % flashcards.length);
+    // Ensure smooth transition by setting isFlipping briefly if needed, or just reset flip
+    setTimeout(() => setCurrentIndex((prevIndex) => (prevIndex + 1) % flashcards.length), isFlipped ? 150 : 0);
+
   };
 
   const handlePrev = () => {
     setIsFlipped(false);
-    setCurrentIndex((prevIndex) => (prevIndex - 1 + flashcards.length) % flashcards.length);
+     setTimeout(() => setCurrentIndex((prevIndex) => (prevIndex - 1 + flashcards.length) % flashcards.length), isFlipped ? 150 : 0);
   };
 
   const handleFlip = () => {
@@ -53,7 +76,7 @@ export function FlashcardViewer({ flashcards }: FlashcardViewerProps) {
     setTimeout(() => {
       setIsFlipped(!isFlipped);
       setIsFlipping(false);
-    }, 150); // Half of the animation duration
+    }, 150); 
   };
 
   return (
@@ -73,7 +96,7 @@ export function FlashcardViewer({ flashcards }: FlashcardViewerProps) {
         <div
           className={cn(
             "w-full h-64 p-6 border rounded-lg flex flex-col items-center justify-center text-center cursor-pointer transition-transform duration-300 ease-in-out relative perspective",
-            isFlipping ? "animate-pulse" : "", // Temporary visual feedback during flip state change
+            isFlipping ? "animate-pulse" : "", 
           )}
           onClick={handleFlip}
           style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
@@ -92,7 +115,7 @@ export function FlashcardViewer({ flashcards }: FlashcardViewerProps) {
           </div>
         </div>
 
-        <div className="mt-6 flex w-full justify-between items-center">
+        <div className="mt-6 flex w-full justify-between items-center gap-2 flex-wrap">
           <Button variant="outline" onClick={handlePrev} disabled={flashcards.length <= 1}>
             <ChevronLeft className="mr-2 h-4 w-4" /> Previous
           </Button>
@@ -103,6 +126,21 @@ export function FlashcardViewer({ flashcards }: FlashcardViewerProps) {
             Next <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
+         <div className="mt-4 w-full">
+            <Button onClick={onGenerateMore} disabled={isGeneratingMore} className="w-full">
+              {isGeneratingMore ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating More...
+                </>
+              ) : (
+                <>
+                  <Shuffle className="mr-2 h-4 w-4" />
+                  Generate More Flashcards
+                </>
+              )}
+            </Button>
+          </div>
       </CardContent>
       <style jsx global>{`
         .perspective {

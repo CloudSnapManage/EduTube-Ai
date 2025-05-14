@@ -24,6 +24,7 @@ export default function EduTubePage() {
   const [notes, setNotes] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [loadingStep, setLoadingStep] = React.useState<"" | "summary" | "flashcards" | "notes">("");
+  const [isGeneratingMoreFlashcards, setIsGeneratingMoreFlashcards] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
 
@@ -35,7 +36,6 @@ export default function EduTubePage() {
       }
       if (urlObj.hostname === "www.youtube.com" || urlObj.hostname === "youtube.com") {
         const videoId = urlObj.searchParams.get("v");
-        // In a real app, you might fetch the title via an API, but for simplicity:
         return videoId ? `Video ${videoId}` : "YouTube Video";
       }
     } catch (e) {
@@ -81,13 +81,12 @@ export default function EduTubePage() {
     setLoadingStep("flashcards");
     const flashcardsResult = await createFlashcardsFromSummary(summaryResult.summary);
     if (flashcardsResult.error || !flashcardsResult.flashcards) {
-      setError(flashcardsResult.error || "Error generating flashcards."); // Keep main error for display
+      setError(prevError => prevError ? `${prevError} Flashcard generation also failed.` : (flashcardsResult.error || "Error generating flashcards."));
       toast({
         title: "Error Generating Flashcards",
         description: flashcardsResult.error || "Failed to generate flashcards.",
         variant: "destructive",
       });
-      // Continue to notes generation even if flashcards fail for now
     } else {
       setFlashcards(flashcardsResult.flashcards);
       toast({
@@ -101,7 +100,7 @@ export default function EduTubePage() {
     setLoadingStep("notes");
     const notesResult = await createNotesFromVideoSummary(summaryResult.summary);
     if (notesResult.error || !notesResult.notes) {
-      setError(notesResult.error || "Error generating notes."); // Update main error if this also fails
+      setError(prevError => prevError ? `${prevError} Note generation also failed.` : (notesResult.error || "Error generating notes."));
       toast({
         title: "Error Generating Notes",
         description: notesResult.error || "Failed to generate revision notes.",
@@ -111,7 +110,7 @@ export default function EduTubePage() {
       setNotes(notesResult.notes);
       toast({
         title: "Revision Notes Ready!",
-        description: "Notes generated from the summary.",
+        description: "Detailed notes generated from the summary.",
         className: "bg-accent text-accent-foreground",
       });
     }
@@ -119,6 +118,41 @@ export default function EduTubePage() {
     setIsLoading(false);
     setLoadingStep("");
   };
+
+  const handleGenerateMoreFlashcards = async () => {
+    if (!summary) {
+      toast({
+        title: "No Summary Available",
+        description: "Cannot generate more flashcards without a video summary.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsGeneratingMoreFlashcards(true);
+    // Clear only flashcard related errors, or general error if no specific flashcard error exists
+    setError(prevError => prevError && prevError.toLowerCase().includes("flashcard") ? null : prevError);
+
+
+    const flashcardsResult = await createFlashcardsFromSummary(summary);
+
+    if (flashcardsResult.error || !flashcardsResult.flashcards) {
+      setError(flashcardsResult.error || "Error generating more flashcards.");
+      toast({
+        title: "Error Generating More Flashcards",
+        description: flashcardsResult.error || "Failed to generate a new set of flashcards.",
+        variant: "destructive",
+      });
+    } else {
+      setFlashcards(flashcardsResult.flashcards);
+      toast({
+        title: "New Flashcards Ready!",
+        description: "A fresh set of flashcards has been generated.",
+        className: "bg-accent text-accent-foreground",
+      });
+    }
+    setIsGeneratingMoreFlashcards(false);
+  };
+
 
   return (
     <div className="container mx-auto min-h-screen p-4 py-8 md:p-8 font-sans">
@@ -128,7 +162,7 @@ export default function EduTubePage() {
           EduTube AI
         </h1>
         <p className="mt-2 text-lg text-muted-foreground">
-          Unlock knowledge faster. Summarize YouTube videos, generate flashcards and notes with AI.
+          Unlock knowledge faster. Summarize YouTube videos, generate flashcards and detailed notes with AI.
         </p>
       </header>
 
@@ -139,22 +173,38 @@ export default function EduTubePage() {
           <LoadingSpinner message="Generating summary, please wait..." className="mt-8" />
         )}
         {isLoading && loadingStep === "flashcards" && (
-          <LoadingSpinner message="Generating flashcards..." className="mt-8" />
+          <LoadingSpinner message="Generating initial flashcards..." className="mt-8" />
         )}
         {isLoading && loadingStep === "notes" && (
-          <LoadingSpinner message="Crafting revision notes..." className="mt-8" />
+          <LoadingSpinner message="Crafting detailed revision notes..." className="mt-8" />
         )}
 
-        {error && !isLoading && ( // Show general error only if not loading something new
+        {error && !isLoading && !isGeneratingMoreFlashcards && ( 
           <Alert variant="destructive" className="mt-8">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Process Interrupted</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+        
+        {/* Display error related to "more flashcards" specifically if it occurs */}
+        {error && isGeneratingMoreFlashcards && (
+           <Alert variant="destructive" className="mt-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Flashcard Regeneration Failed</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
 
         {summary && !isLoading && <SummaryDisplay summary={summary} />}
-        {flashcards && !isLoading && <FlashcardViewer flashcards={flashcards} />}
+        {flashcards && !isLoading && (
+          <FlashcardViewer 
+            flashcards={flashcards} 
+            onGenerateMore={handleGenerateMoreFlashcards}
+            isGeneratingMore={isGeneratingMoreFlashcards}
+          />
+        )}
         {notes && !isLoading && <NoteDisplay notes={notes} videoTitle={videoTitle} />}
       </main>
 

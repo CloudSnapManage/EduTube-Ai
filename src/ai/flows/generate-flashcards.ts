@@ -36,11 +36,11 @@ const generateFlashcardsPrompt = ai.definePrompt({
   name: 'generateFlashcardsPrompt',
   input: {schema: GenerateFlashcardsInputSchema},
   output: {schema: GenerateFlashcardsOutputSchema},
-  prompt: `You are an expert educator. Generate a set of flashcards from the following video summary.
+  prompt: `You are an expert educator. Generate a *fresh and distinct* set of flashcards from the following video summary.
 
 Video Summary: {{{videoSummary}}}
 
-Each flashcard should have a question and an answer. The questions should be designed to test the user's understanding of the material.
+Each flashcard should have a question and an answer. The questions should be designed to test the user's understanding of the material. Aim for variety if previous sets have been generated.
 `,
 });
 

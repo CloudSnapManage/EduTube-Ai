@@ -104,13 +104,14 @@ export async function createFlashcardsFromSummary(summary: string): Promise<{ fl
   }
 }
 
-// Note: createNotesFromVideoSummary might become redundant if notes are always generated in processVideoUrl.
-// However, it can be kept if there's a use case to regenerate notes independently later.
-// For now, primary note generation is within processVideoUrl.
 
-export async function askQuestionAboutSummary(videoSummary: string, userQuestion: string): Promise<{ answer: string | null, error?: string }> {
+export async function askQuestionAboutSummary(
+  videoSummary: string,
+  userQuestion: string,
+  conversationHistory?: AnswerUserQuestionInput['conversationHistory']
+): Promise<{ answer: string | null, error?: string }> {
   try {
-    const input: AnswerUserQuestionInput = { videoSummary, userQuestion };
+    const input: AnswerUserQuestionInput = { videoSummary, userQuestion, conversationHistory };
     const result: AnswerUserQuestionOutput = await answerUserQuestion(input);
     return { answer: result.answer };
   } catch (error) {

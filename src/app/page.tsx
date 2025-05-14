@@ -243,7 +243,7 @@ export default function EduTubePage() {
           </div>
         )}
         
-        {!isLoading && videoSummary && ( // Ensure videoSummary is not null before rendering Q&A
+        {!isLoading && summary && ( // Ensure summary is not null before rendering Q&A
            <div className={animationClasses}>
             <QuestionAnswerSection videoSummary={summary} />
            </div>

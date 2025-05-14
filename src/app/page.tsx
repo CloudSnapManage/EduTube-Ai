@@ -283,11 +283,6 @@ export default function EduTubePage() {
           </div>
         )}
 
-        {summary && !isLoading && (
-          <div className={animationClasses}>
-            <SummaryDisplay summary={summary} />
-          </div>
-        )}
         {chapters && videoUrl && currentVideoId && !isLoading && (
           <div className={animationClasses}>
             <ChapterDisplay 
@@ -295,6 +290,11 @@ export default function EduTubePage() {
               videoId={currentVideoId} 
               onChapterClick={handleChapterClick}
             />
+          </div>
+        )}
+        {summary && !isLoading && (
+          <div className={animationClasses}>
+            <SummaryDisplay summary={summary} />
           </div>
         )}
         {flashcards && !isLoading && (

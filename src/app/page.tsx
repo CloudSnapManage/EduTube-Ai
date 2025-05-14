@@ -2,13 +2,15 @@
 "use client";
 
 import * as React from "react";
-import type { Chapter } from "@/ai/flows/generate-chapters"; // Import Chapter type
+import type { Chapter } from "@/ai/flows/generate-chapters";
+import type { TranscriptResponse } from "youtube-transcript"; // Import TranscriptResponse
 import { UrlInputForm } from "@/components/edutube/UrlInputForm";
 import { SummaryDisplay } from "@/components/edutube/SummaryDisplay";
 import { FlashcardViewer } from "@/components/edutube/FlashcardViewer";
 import { NoteDisplay } from "@/components/edutube/NoteDisplay";
 import { QuestionAnswerSection } from "@/components/edutube/QuestionAnswerSection";
-import { ChapterDisplay } from "@/components/edutube/ChapterDisplay"; // Import ChapterDisplay
+import { ChapterDisplay } from "@/components/edutube/ChapterDisplay";
+import { InteractiveTranscriptDisplay } from "@/components/edutube/InteractiveTranscriptDisplay"; // Import new component
 import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
 import { processVideoUrl, createFlashcardsFromSummary, type ProcessedVideoData } from "./actions";
 import { useToast } from "@/hooks/use-toast";
@@ -25,10 +27,10 @@ export default function EduTubePage() {
   const [summary, setSummary] = React.useState<string | null>(null);
   const [flashcards, setFlashcards] = React.useState<Flashcard[] | null>(null);
   const [notes, setNotes] = React.useState<string | null>(null);
-  const [chapters, setChapters] = React.useState<Chapter[] | null>(null); // State for chapters
+  const [chapters, setChapters] = React.useState<Chapter[] | null>(null);
+  const [rawTranscript, setRawTranscript] = React.useState<TranscriptResponse[] | null>(null); // State for raw transcript
   const [isLoading, setIsLoading] = React.useState(false);
-  // Extended loading steps to include chapters
-  const [loadingStep, setLoadingStep] = React.useState<"" | "processing" | "summary" | "flashcards" | "notes" | "chapters">("");
+  const [loadingStep, setLoadingStep] = React.useState<"" | "processing" | "summary" | "flashcards" | "notes" | "chapters" | "transcript">("");
   const [isGeneratingMoreFlashcards, setIsGeneratingMoreFlashcards] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
@@ -53,12 +55,13 @@ export default function EduTubePage() {
 
   const handleUrlSubmit = async (submittedVideoUrl: string) => {
     setIsLoading(true);
-    setLoadingStep("processing"); // General processing step
+    setLoadingStep("processing"); 
     setError(null);
     setSummary(null);
     setFlashcards(null);
     setNotes(null);
-    setChapters(null); // Reset chapters
+    setChapters(null);
+    setRawTranscript(null); // Reset raw transcript
     setVideoUrl(submittedVideoUrl);
 
     toast({
@@ -68,17 +71,18 @@ export default function EduTubePage() {
 
     const result: ProcessedVideoData = await processVideoUrl(submittedVideoUrl);
 
-    if (result.error || !result.summary) { // Check for summary as a primary success indicator for dependent steps
+    if (result.error || !result.summary) { 
       setError(result.error || "An unknown error occurred during processing.");
       toast({
         title: "😕 Error Processing Video",
         description: result.error || "Failed to process the video. Please check the URL or try another.",
         variant: "destructive",
       });
-      setSummary(null); // Ensure summary is null on error
+      setSummary(null); 
       setFlashcards(null);
       setNotes(null);
       setChapters(null);
+      setRawTranscript(null); // Ensure transcript is also null on error
     } else {
       setSummary(result.summary);
       toast({
@@ -94,7 +98,7 @@ export default function EduTubePage() {
           description: "Flashcards generated from the summary.",
           className: "bg-accent text-accent-foreground",
         });
-      } else if (result.summary) { // Only show flashcard error if summary was successful
+      } else if (result.summary) { 
          toast({
           title: "📭 Flashcard Generation Skipped",
           description: "Could not generate flashcards. The summary might be too short or an issue occurred.",
@@ -116,25 +120,40 @@ export default function EduTubePage() {
           variant: "default", className: "bg-muted text-muted-foreground"
         });
       }
-    }
 
-    // Chapters are generated regardless of summary success, as they depend on transcript
-    if (result.chapters && result.chapters.length > 0) {
-      setChapters(result.chapters);
-      toast({
-        title: "📚 Chapters Identified!",
-        description: "Video chapters and timestamps are ready.",
-        className: "bg-accent text-accent-foreground",
-      });
-    } else if (!result.error || !result.error?.includes("transcript")) { // Don't show chapter error if transcript itself failed
-       toast({
-        title: "📖 Chapter Generation Skipped",
-        description: "Could not identify distinct chapters for this video.",
-        variant: "default", className: "bg-muted text-muted-foreground"
-      });
+      // Chapters are generated regardless of summary success
+      if (result.chapters && result.chapters.length > 0) {
+        setChapters(result.chapters);
+        toast({
+          title: "📚 Chapters Identified!",
+          description: "Video chapters and timestamps are ready.",
+          className: "bg-accent text-accent-foreground",
+        });
+      } else if (!result.error || !result.error?.includes("transcript")) {
+         toast({
+          title: "📖 Chapter Generation Skipped",
+          description: "Could not identify distinct chapters for this video.",
+          variant: "default", className: "bg-muted text-muted-foreground"
+        });
+      }
+
+      // Raw transcript is available if the initial fetch was successful
+      if (result.rawTranscript && result.rawTranscript.length > 0) {
+        setRawTranscript(result.rawTranscript);
+        toast({
+            title: "📜 Transcript Loaded!",
+            description: "Video transcript is ready for interaction.",
+            className: "bg-accent text-accent-foreground",
+        });
+      } else if (!result.error || !result.error?.includes("transcript")) {
+         toast({
+            title: "📄 Transcript Unavailable",
+            description: "Could not load the interactive transcript for this video.",
+            variant: "default", className: "bg-muted text-muted-foreground"
+          });
+      }
     }
     
-    // Consolidate any errors from the backend
     if (result.error) {
         setError(prevError => prevError ? `${prevError} Additionally: ${result.error}` : result.error);
     }
@@ -217,10 +236,14 @@ export default function EduTubePage() {
           </Alert>
         )}
 
-        {/* Display sections if their data is available, with animations */}
         {summary && !isLoading && (
           <div className={animationClasses}>
             <SummaryDisplay summary={summary} />
+          </div>
+        )}
+        {rawTranscript && videoUrl && !isLoading && (
+          <div className={animationClasses}>
+            <InteractiveTranscriptDisplay rawTranscript={rawTranscript} videoUrl={videoUrl} />
           </div>
         )}
         {chapters && videoUrl && !isLoading && (
@@ -243,7 +266,7 @@ export default function EduTubePage() {
           </div>
         )}
         
-        {!isLoading && summary && ( // Ensure summary is not null before rendering Q&A
+        {!isLoading && summary && (
            <div className={animationClasses}>
             <QuestionAnswerSection videoSummary={summary} />
            </div>
@@ -258,4 +281,3 @@ export default function EduTubePage() {
     </div>
   );
 }
-

@@ -16,6 +16,7 @@ export interface ProcessedVideoData {
   flashcards: GenerateFlashcardsOutput['flashcards'] | null;
   notes: string | null;
   chapters: Chapter[] | null;
+  rawTranscript: TranscriptResponse[] | null; // Added raw transcript
   error?: string | null; // Consolidated error message
 }
 
@@ -24,19 +25,20 @@ export async function processVideoUrl(videoUrl: string): Promise<ProcessedVideoD
   let flashcards: GenerateFlashcardsOutput['flashcards'] | null = null;
   let notes: string | null = null;
   let chapters: Chapter[] | null = null;
+  let rawTranscriptResult: TranscriptResponse[] | null = null;
   let accumulatedError: string | null = null;
 
   try {
     // 1. Get Transcript
-    const rawTranscript: TranscriptResponse[] | null = await getYouTubeTranscript(videoUrl);
+    rawTranscriptResult = await getYouTubeTranscript(videoUrl);
 
-    if (!rawTranscript || rawTranscript.length === 0) {
-      return { videoUrl, summary, flashcards, notes, chapters, error: "Could not retrieve transcript for the video. It might be unavailable or have transcripts disabled." };
+    if (!rawTranscriptResult || rawTranscriptResult.length === 0) {
+      return { videoUrl, summary, flashcards, notes, chapters, rawTranscript: null, error: "Could not retrieve transcript for the video. It might be unavailable or have transcripts disabled." };
     }
 
     // 2. Generate Summary
     try {
-      const textForSummary = rawTranscript.map(t => t.text).join(' ');
+      const textForSummary = rawTranscriptResult.map(t => t.text).join(' ');
       const summaryInput: SummarizeYouTubeVideoInput = { videoTranscript: textForSummary };
       const summaryResult: SummarizeYouTubeVideoOutput = await summarizeYouTubeVideo(summaryInput);
       summary = summaryResult.summary;
@@ -73,7 +75,7 @@ export async function processVideoUrl(videoUrl: string): Promise<ProcessedVideoD
     
     // 5. Generate Chapters (depends on raw transcript)
     try {
-      const segmentsForChapters = rawTranscript.map(t => ({ text: t.text, offset: t.offset }));
+      const segmentsForChapters = rawTranscriptResult.map(t => ({ text: t.text, offset: t.offset }));
       const chaptersInput: GenerateChaptersInput = { transcriptSegments: segmentsForChapters };
       const chaptersResult: GenerateChaptersOutput = await generateChapters(chaptersInput);
       chapters = chaptersResult.chapters;
@@ -82,12 +84,12 @@ export async function processVideoUrl(videoUrl: string): Promise<ProcessedVideoD
       accumulatedError = (accumulatedError ? accumulatedError + " " : "") + "Failed to generate chapters.";
     }
 
-    return { videoUrl, summary, flashcards, notes, chapters, error: accumulatedError };
+    return { videoUrl, summary, flashcards, notes, chapters, rawTranscript: rawTranscriptResult, error: accumulatedError };
 
   } catch (error: any) {
     console.error("Error processing video URL:", error);
     // This catches errors from getYouTubeTranscript or other unexpected issues
-    return { videoUrl, summary, flashcards, notes, chapters, error: error.message || "An unexpected error occurred during video processing." };
+    return { videoUrl, summary, flashcards, notes, chapters, rawTranscript: rawTranscriptResult, error: error.message || "An unexpected error occurred during video processing." };
   }
 }
 

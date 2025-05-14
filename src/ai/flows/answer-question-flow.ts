@@ -23,7 +23,7 @@ const AnswerUserQuestionInputSchema = z.object({
 export type AnswerUserQuestionInput = z.infer<typeof AnswerUserQuestionInputSchema>;
 
 const AnswerUserQuestionOutputSchema = z.object({
-  answer: z.string().describe('A detailed and well-explained answer to the user_s question, derived strictly from the provided video summary. The answer should be in easy-to-understand language.'),
+  answer: z.string().describe('A detailed, comprehensive, and well-explained answer to the user_s question, derived strictly from the provided video summary. The answer should elaborate on concepts, provide thorough explanations of main ideas, and be presented in easy-to-understand language.'),
 });
 export type AnswerUserQuestionOutput = z.infer<typeof AnswerUserQuestionOutputSchema>;
 
@@ -35,9 +35,14 @@ const answerUserQuestionPrompt = ai.definePrompt({
   name: 'answerUserQuestionPrompt',
   input: {schema: AnswerUserQuestionInputSchema},
   output: {schema: AnswerUserQuestionOutputSchema},
-  prompt: `You are an expert educational assistant. Your task is to answer the user's question based *solely* on the provided video summary.
+  prompt: `You are an expert educational assistant. Your primary task is to answer the user's question based *solely* on the provided video summary.
 Do not use any external knowledge or make assumptions beyond what is stated in the summary.
-Explain the answer in detail, using simple and easy-to-understand language. Structure your answer clearly.
+
+When answering, ensure your response is:
+- **Detailed and Comprehensive**: Elaborate on concepts and provide thorough explanations of the main ideas and arguments present in the summary related to the question.
+- **Easy to Understand**: Use simple language and clear sentence structures.
+- **Well-Structured**: Organize your answer logically, using paragraphs, bullet points, or numbered lists if appropriate to enhance clarity.
+- **Focused**: Directly address the user's question using only the information available in the video summary. If the summary does not contain information to answer a specific part of the question, state that clearly.
 
 Video Summary:
 {{{videoSummary}}}
@@ -45,7 +50,7 @@ Video Summary:
 User's Question:
 {{{userQuestion}}}
 
-Provide a comprehensive answer to the user's question using only the information from the video summary.
+Provide a detailed and well-explained answer to the user's question using only the information from the video summary.
 `,
 });
 

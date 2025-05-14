@@ -3,21 +3,23 @@
 
 import * as React from "react";
 import type { Chapter } from "@/ai/flows/generate-chapters";
-import type { QuizQuestion, GenerateQuizOutput } from "@/ai/flows/generate-quiz"; // Import QuizQuestion type
+import type { GenerateQuizOutput } from "@/ai/flows/generate-quiz"; 
 import { UrlInputForm } from "@/components/edutube/UrlInputForm";
 import { SummaryDisplay } from "@/components/edutube/SummaryDisplay";
 import { FlashcardViewer } from "@/components/edutube/FlashcardViewer";
 import { NoteDisplay } from "@/components/edutube/NoteDisplay";
 import { QuestionAnswerSection } from "@/components/edutube/QuestionAnswerSection";
 import { ChapterDisplay } from "@/components/edutube/ChapterDisplay";
-import { QuizDisplay } from "@/components/edutube/QuizDisplay"; // Import QuizDisplay
+import { QuizDisplay } from "@/components/edutube/QuizDisplay"; 
 import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
+import { EmbeddedVideoPlayer } from "@/components/edutube/EmbeddedVideoPlayer"; // New component
 import { processVideoUrl, createFlashcardsFromSummary, type ProcessedVideoData, generateAdvancedQuiz } from "./actions"; 
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"; 
-import { AlertTriangle, Sparkles, Brain, BookCheck } from "lucide-react"; 
+import { AlertTriangle, Sparkles, BookCheck } from "lucide-react"; 
+import { getYouTubeVideoId } from "@/lib/youtube-utils"; // YouTube ID utility
 
 interface Flashcard {
   question: string;
@@ -26,6 +28,8 @@ interface Flashcard {
 
 export default function EduTubePage() {
   const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
+  const [currentVideoId, setCurrentVideoId] = React.useState<string | null>(null);
+  const [playerTimestamp, setPlayerTimestamp] = React.useState<number | undefined>(undefined);
   const [summary, setSummary] = React.useState<string | null>(null);
   const [flashcards, setFlashcards] = React.useState<Flashcard[] | null>(null);
   const [notes, setNotes] = React.useState<string | null>(null);
@@ -38,23 +42,17 @@ export default function EduTubePage() {
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
 
-  const getYouTubeVideoTitle = (url: string): string => {
+  const getYouTubeVideoTitleFromUrl = (url: string): string => { // Renamed for clarity
     try {
-      const urlObj = new URL(url);
-      if (urlObj.hostname === "youtu.be") {
-        return urlObj.pathname.substring(1) || "YouTube Video";
-      }
-      if (urlObj.hostname === "www.youtube.com" || urlObj.hostname === "youtube.com") {
-        const videoId = urlObj.searchParams.get("v");
-        return videoId ? `Video ${videoId}` : "YouTube Video";
-      }
+      const videoId = getYouTubeVideoId(url);
+      return videoId ? `Video (${videoId})` : "YouTube Video"; // Use videoId in title
     } catch (e) {
       // Invalid URL
     }
     return "YouTube Video";
   };
   
-  const videoTitle = React.useMemo(() => videoUrl ? getYouTubeVideoTitle(videoUrl) : "EduTube Study Material", [videoUrl]);
+  const videoTitle = React.useMemo(() => videoUrl ? getYouTubeVideoTitleFromUrl(videoUrl) : "EduTube Study Material", [videoUrl]);
 
   const handleUrlSubmit = async (submittedVideoUrl: string) => {
     setIsLoading(true);
@@ -66,6 +64,10 @@ export default function EduTubePage() {
     setChapters(null);
     setGeneratedQuizData(null); 
     setVideoUrl(submittedVideoUrl);
+    
+    const extractedVideoId = getYouTubeVideoId(submittedVideoUrl);
+    setCurrentVideoId(extractedVideoId);
+    setPlayerTimestamp(undefined); // Reset player timestamp
 
     toast({
       title: "🚀 Processing Video...",
@@ -85,6 +87,7 @@ export default function EduTubePage() {
       setFlashcards(null);
       setNotes(null);
       setChapters(null);
+      setCurrentVideoId(null); // Clear videoId on error
     } else {
       setSummary(result.summary);
       toast({
@@ -141,6 +144,7 @@ export default function EduTubePage() {
     
     if (result.error) {
         setError(prevError => prevError ? `${prevError} Additionally: ${result.error}` : result.error);
+        if (!result.summary) setCurrentVideoId(null); // Clear videoId if summary failed significantly
     }
 
     setIsLoading(false);
@@ -222,6 +226,14 @@ export default function EduTubePage() {
     setLoadingStep("");
   };
 
+  const handleChapterClick = (timeInSeconds: number) => {
+    setPlayerTimestamp(timeInSeconds);
+    // Scroll to player if needed
+    const playerElement = document.getElementById("embedded-video-player-card");
+    if (playerElement) {
+      playerElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
 
   const animationClasses = "animate-in fade-in-0 slide-in-from-top-5 duration-700 ease-out";
 
@@ -265,14 +277,24 @@ export default function EduTubePage() {
           </Alert>
         )}
 
+        {currentVideoId && !isLoading && (
+          <div id="embedded-video-player-card" className={animationClasses}>
+            <EmbeddedVideoPlayer videoId={currentVideoId} seekToTime={playerTimestamp} />
+          </div>
+        )}
+
         {summary && !isLoading && (
           <div className={animationClasses}>
             <SummaryDisplay summary={summary} />
           </div>
         )}
-        {chapters && videoUrl && !isLoading && (
+        {chapters && videoUrl && currentVideoId && !isLoading && (
           <div className={animationClasses}>
-            <ChapterDisplay chapters={chapters} videoUrl={videoUrl} />
+            <ChapterDisplay 
+              chapters={chapters} 
+              videoId={currentVideoId} 
+              onChapterClick={handleChapterClick}
+            />
           </div>
         )}
         {flashcards && !isLoading && (

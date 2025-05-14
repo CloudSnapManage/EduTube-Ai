@@ -1,11 +1,13 @@
+
 "use client";
 
 import * as React from "react";
 import { UrlInputForm } from "@/components/edutube/UrlInputForm";
 import { SummaryDisplay } from "@/components/edutube/SummaryDisplay";
 import { FlashcardViewer } from "@/components/edutube/FlashcardViewer";
+import { NoteDisplay } from "@/components/edutube/NoteDisplay";
 import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
-import { processVideoUrl, createFlashcardsFromSummary } from "./actions";
+import { processVideoUrl, createFlashcardsFromSummary, createNotesFromVideoSummary } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Sparkles } from "lucide-react";
@@ -16,26 +18,50 @@ interface Flashcard {
 }
 
 export default function EduTubePage() {
+  const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
   const [summary, setSummary] = React.useState<string | null>(null);
   const [flashcards, setFlashcards] = React.useState<Flashcard[] | null>(null);
+  const [notes, setNotes] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [loadingStep, setLoadingStep] = React.useState<"" | "summary" | "flashcards">("");
+  const [loadingStep, setLoadingStep] = React.useState<"" | "summary" | "flashcards" | "notes">("");
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
 
-  const handleUrlSubmit = async (videoUrl: string) => {
+  const getYouTubeVideoTitle = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      if (urlObj.hostname === "youtu.be") {
+        return urlObj.pathname.substring(1) || "YouTube Video";
+      }
+      if (urlObj.hostname === "www.youtube.com" || urlObj.hostname === "youtube.com") {
+        const videoId = urlObj.searchParams.get("v");
+        // In a real app, you might fetch the title via an API, but for simplicity:
+        return videoId ? `Video ${videoId}` : "YouTube Video";
+      }
+    } catch (e) {
+      // Invalid URL
+    }
+    return "YouTube Video";
+  };
+  
+  const videoTitle = React.useMemo(() => videoUrl ? getYouTubeVideoTitle(videoUrl) : "EduTube Study Material", [videoUrl]);
+
+
+  const handleUrlSubmit = async (submittedVideoUrl: string) => {
     setIsLoading(true);
     setLoadingStep("summary");
     setError(null);
     setSummary(null);
     setFlashcards(null);
+    setNotes(null);
+    setVideoUrl(submittedVideoUrl);
 
-    const summaryResult = await processVideoUrl(videoUrl);
+    const summaryResult = await processVideoUrl(submittedVideoUrl);
 
     if (summaryResult.error || !summaryResult.summary) {
       setError(summaryResult.error || "An unknown error occurred while summarizing.");
       toast({
-        title: "Error",
+        title: "Error Summarizing",
         description: summaryResult.error || "Failed to get summary.",
         variant: "destructive",
       });
@@ -48,24 +74,44 @@ export default function EduTubePage() {
     toast({
       title: "Summary Generated!",
       description: "Video summary successfully created.",
-      className: "bg-accent text-accent-foreground",
+      className: "bg-primary text-primary-foreground",
     });
 
+    // Generate Flashcards
     setLoadingStep("flashcards");
     const flashcardsResult = await createFlashcardsFromSummary(summaryResult.summary);
-
     if (flashcardsResult.error || !flashcardsResult.flashcards) {
-      setError(flashcardsResult.error || "An unknown error occurred while generating flashcards.");
+      setError(flashcardsResult.error || "Error generating flashcards."); // Keep main error for display
       toast({
-        title: "Error",
+        title: "Error Generating Flashcards",
         description: flashcardsResult.error || "Failed to generate flashcards.",
         variant: "destructive",
       });
+      // Continue to notes generation even if flashcards fail for now
     } else {
       setFlashcards(flashcardsResult.flashcards);
       toast({
         title: "Flashcards Ready!",
         description: "Flashcards generated from the summary.",
+        className: "bg-accent text-accent-foreground",
+      });
+    }
+    
+    // Generate Notes
+    setLoadingStep("notes");
+    const notesResult = await createNotesFromVideoSummary(summaryResult.summary);
+    if (notesResult.error || !notesResult.notes) {
+      setError(notesResult.error || "Error generating notes."); // Update main error if this also fails
+      toast({
+        title: "Error Generating Notes",
+        description: notesResult.error || "Failed to generate revision notes.",
+        variant: "destructive",
+      });
+    } else {
+      setNotes(notesResult.notes);
+      toast({
+        title: "Revision Notes Ready!",
+        description: "Notes generated from the summary.",
         className: "bg-accent text-accent-foreground",
       });
     }
@@ -82,7 +128,7 @@ export default function EduTubePage() {
           EduTube AI
         </h1>
         <p className="mt-2 text-lg text-muted-foreground">
-          Unlock knowledge faster. Summarize YouTube videos and generate flashcards with AI.
+          Unlock knowledge faster. Summarize YouTube videos, generate flashcards and notes with AI.
         </p>
       </header>
 
@@ -95,17 +141,21 @@ export default function EduTubePage() {
         {isLoading && loadingStep === "flashcards" && (
           <LoadingSpinner message="Generating flashcards..." className="mt-8" />
         )}
+        {isLoading && loadingStep === "notes" && (
+          <LoadingSpinner message="Crafting revision notes..." className="mt-8" />
+        )}
 
-        {error && (
+        {error && !isLoading && ( // Show general error only if not loading something new
           <Alert variant="destructive" className="mt-8">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
+            <AlertTitle>Process Interrupted</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {summary && !isLoading && <SummaryDisplay summary={summary} />}
         {flashcards && !isLoading && <FlashcardViewer flashcards={flashcards} />}
+        {notes && !isLoading && <NoteDisplay notes={notes} videoTitle={videoTitle} />}
       </main>
 
       <footer className="mt-16 text-center text-sm text-muted-foreground">

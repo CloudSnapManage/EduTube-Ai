@@ -1,7 +1,9 @@
+
 "use server";
 
 import { summarizeYouTubeVideo, type SummarizeYouTubeVideoInput, type SummarizeYouTubeVideoOutput } from "@/ai/flows/summarize-youtube-video";
 import { generateFlashcards, type GenerateFlashcardsInput, type GenerateFlashcardsOutput } from "@/ai/flows/generate-flashcards";
+import { generateNotes, type GenerateNotesInput, type GenerateNotesOutput } from "@/ai/flows/generate-notes";
 
 export async function processVideoUrl(videoUrl: string): Promise<{ summary: string | null, error?: string }> {
   try {
@@ -22,5 +24,16 @@ export async function createFlashcardsFromSummary(summary: string): Promise<{ fl
   } catch (error) {
     console.error("Error generating flashcards:", error);
     return { flashcards: null, error: "Failed to generate flashcards from the summary." };
+  }
+}
+
+export async function createNotesFromVideoSummary(summary: string): Promise<{ notes: string | null, error?: string }> {
+  try {
+    const input: GenerateNotesInput = { videoSummary: summary };
+    const result: GenerateNotesOutput = await generateNotes(input);
+    return { notes: result.notes };
+  } catch (error) {
+    console.error("Error generating notes:", error);
+    return { notes: null, error: "Failed to generate notes from the summary." };
   }
 }

@@ -62,8 +62,15 @@ export function FlashcardViewer({ initialFlashcards, onGenerateMore, isGeneratin
 
   const startEditing = (index: number) => {
     setEditingIndex(index);
-    setEditQuestion(flashcards[index].question);
-    setEditAnswer(flashcards[index].answer);
+    // Ensure flashcards[index] exists, which it should if called from 'Edit Card' button
+    if (flashcards[index]) {
+      setEditQuestion(flashcards[index].question);
+      setEditAnswer(flashcards[index].answer);
+    } else {
+      // Fallback, though this case should ideally not be hit if UI prevents editing non-existent cards
+      setEditQuestion("");
+      setEditAnswer("");
+    }
     setIsFlipped(false); // Ensure card is on question side for editing
   };
 
@@ -99,11 +106,20 @@ export function FlashcardViewer({ initialFlashcards, onGenerateMore, isGeneratin
   };
 
   const addNewFlashcard = () => {
-    const newCard: Flashcard = { id: `fc-${Date.now()}`, question: "", answer: "" };
-    setFlashcards(prev => [...prev, newCard]);
-    setCurrentIndex(flashcards.length); // Go to the new card
-    startEditing(flashcards.length);   // Start editing the new card
-    setIsFlipped(false);
+    const newCard: Flashcard = { id: `fc-${Date.now()}-${Math.random()}`, question: "", answer: "" };
+    setFlashcards(prevFlashcards => {
+      const updatedFlashcards = [...prevFlashcards, newCard];
+      const newCardIndex = updatedFlashcards.length - 1;
+      
+      // Set all states needed for editing the new card
+      setCurrentIndex(newCardIndex); 
+      setEditingIndex(newCardIndex);
+      setEditQuestion(newCard.question); // Will be ""
+      setEditAnswer(newCard.answer);   // Will be ""
+      setIsFlipped(false); // Ensure new card starts on question side and isn't flipped
+
+      return updatedFlashcards; // Return the new array for React to update the state
+    });
   };
   
   const downloadFile = (filename: string, content: string, mimeType: string) => {
@@ -299,5 +315,3 @@ export function FlashcardViewer({ initialFlashcards, onGenerateMore, isGeneratin
     </Card>
   );
 }
-
-    

@@ -5,3 +5,4 @@ config();
 import '@/ai/flows/summarize-youtube-video.ts';
 import '@/ai/flows/generate-flashcards.ts';
 import '@/ai/flows/generate-notes.ts';
+import '@/ai/flows/answer-question-flow.ts';

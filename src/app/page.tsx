@@ -6,6 +6,7 @@ import { UrlInputForm } from "@/components/edutube/UrlInputForm";
 import { SummaryDisplay } from "@/components/edutube/SummaryDisplay";
 import { FlashcardViewer } from "@/components/edutube/FlashcardViewer";
 import { NoteDisplay } from "@/components/edutube/NoteDisplay";
+import { QuestionAnswerSection } from "@/components/edutube/QuestionAnswerSection";
 import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
 import { processVideoUrl, createFlashcardsFromSummary, createNotesFromVideoSummary } from "./actions";
 import { useToast } from "@/hooks/use-toast";
@@ -162,7 +163,7 @@ export default function EduTubePage() {
           EduTube AI
         </h1>
         <p className="mt-2 text-lg text-muted-foreground">
-          Unlock knowledge faster. Summarize YouTube videos, generate flashcards and detailed notes with AI.
+          Unlock knowledge faster. Summarize YouTube videos, generate flashcards, detailed notes, and ask questions with AI.
         </p>
       </header>
 
@@ -206,6 +207,10 @@ export default function EduTubePage() {
           />
         )}
         {notes && !isLoading && <NoteDisplay notes={notes} videoTitle={videoTitle} />}
+        
+        {/* Question Answer Section - only appears if summary is available */}
+        {!isLoading && <QuestionAnswerSection videoSummary={summary} />}
+
       </main>
 
       <footer className="mt-16 text-center text-sm text-muted-foreground">

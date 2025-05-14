@@ -4,6 +4,7 @@
 import { summarizeYouTubeVideo, type SummarizeYouTubeVideoInput, type SummarizeYouTubeVideoOutput } from "@/ai/flows/summarize-youtube-video";
 import { generateFlashcards, type GenerateFlashcardsInput, type GenerateFlashcardsOutput } from "@/ai/flows/generate-flashcards";
 import { generateNotes, type GenerateNotesInput, type GenerateNotesOutput } from "@/ai/flows/generate-notes";
+import { answerUserQuestion, type AnswerUserQuestionInput, type AnswerUserQuestionOutput } from "@/ai/flows/answer-question-flow";
 
 export async function processVideoUrl(videoUrl: string): Promise<{ summary: string | null, error?: string }> {
   try {
@@ -35,5 +36,16 @@ export async function createNotesFromVideoSummary(summary: string): Promise<{ no
   } catch (error) {
     console.error("Error generating notes:", error);
     return { notes: null, error: "Failed to generate notes from the summary." };
+  }
+}
+
+export async function askQuestionAboutSummary(videoSummary: string, userQuestion: string): Promise<{ answer: string | null, error?: string }> {
+  try {
+    const input: AnswerUserQuestionInput = { videoSummary, userQuestion };
+    const result: AnswerUserQuestionOutput = await answerUserQuestion(input);
+    return { answer: result.answer };
+  } catch (error) {
+    console.error("Error answering question:", error);
+    return { answer: null, error: "Failed to get an answer for your question." };
   }
 }

@@ -9,6 +9,7 @@ import { generateFlashcards, type GenerateFlashcardsInput, type GenerateFlashcar
 import { generateNotes, type GenerateNotesInput, type GenerateNotesOutput } from "@/ai/flows/generate-notes";
 import { answerUserQuestion, type AnswerUserQuestionInput, type AnswerUserQuestionOutput } from "@/ai/flows/answer-question-flow";
 import { generateChapters, type GenerateChaptersInput, type GenerateChaptersOutput, type Chapter } from "@/ai/flows/generate-chapters";
+import { generateAdvancedQuizAction, type GenerateQuizInput, type GenerateQuizOutput } from "@/ai/flows/generate-quiz"; // New quiz flow
 
 export interface ProcessedVideoData {
   videoUrl: string;
@@ -16,8 +17,7 @@ export interface ProcessedVideoData {
   flashcards: GenerateFlashcardsOutput['flashcards'] | null;
   notes: string | null;
   chapters: Chapter[] | null;
-  // rawTranscript: TranscriptResponse[] | null; // Removed raw transcript
-  error?: string | null; // Consolidated error message
+  error?: string | null; 
 }
 
 export async function processVideoUrl(videoUrl: string): Promise<ProcessedVideoData> {
@@ -25,19 +25,16 @@ export async function processVideoUrl(videoUrl: string): Promise<ProcessedVideoD
   let flashcards: GenerateFlashcardsOutput['flashcards'] | null = null;
   let notes: string | null = null;
   let chapters: Chapter[] | null = null;
-  let rawTranscriptResult: TranscriptResponse[] | null = null; // Keep for chapter generation
+  let rawTranscriptResult: TranscriptResponse[] | null = null; 
   let accumulatedError: string | null = null;
 
   try {
-    // 1. Get Transcript (still needed for chapters)
     rawTranscriptResult = await getYouTubeTranscript(videoUrl);
 
     if (!rawTranscriptResult || rawTranscriptResult.length === 0) {
-      // Return early if transcript fails, as summary and chapters depend on it.
       return { videoUrl, summary, flashcards, notes, chapters, error: "Could not retrieve transcript for the video. It might be unavailable or have transcripts disabled." };
     }
 
-    // 2. Generate Summary
     try {
       const textForSummary = rawTranscriptResult.map(t => t.text).join(' ');
       const summaryInput: SummarizeYouTubeVideoInput = { videoTranscript: textForSummary };
@@ -49,7 +46,6 @@ export async function processVideoUrl(videoUrl: string): Promise<ProcessedVideoD
     }
 
     if (summary) {
-      // 3. Generate Flashcards (depends on summary)
       try {
         const flashcardsInput: GenerateFlashcardsInput = { videoSummary: summary };
         const flashcardsResult: GenerateFlashcardsOutput = await generateFlashcards(flashcardsInput);
@@ -59,7 +55,6 @@ export async function processVideoUrl(videoUrl: string): Promise<ProcessedVideoD
         accumulatedError = (accumulatedError ? accumulatedError + " " : "") + "Failed to generate flashcards.";
       }
 
-      // 4. Generate Notes (depends on summary)
       try {
         const notesInput: GenerateNotesInput = { videoSummary: summary };
         const notesResult: GenerateNotesOutput = await generateNotes(notesInput);
@@ -69,12 +64,10 @@ export async function processVideoUrl(videoUrl: string): Promise<ProcessedVideoD
         accumulatedError = (accumulatedError ? accumulatedError + " " : "") + "Failed to generate notes.";
       }
     } else {
-        // If summary failed, skip dependent steps
         if (!accumulatedError) accumulatedError = "Summary generation failed, skipping flashcards and notes.";
         else accumulatedError += " Summary generation failed, skipping flashcards and notes.";
     }
     
-    // 5. Generate Chapters (depends on raw transcript)
     try {
       const segmentsForChapters = rawTranscriptResult.map(t => ({ text: t.text, offset: t.offset }));
       const chaptersInput: GenerateChaptersInput = { transcriptSegments: segmentsForChapters };
@@ -89,13 +82,11 @@ export async function processVideoUrl(videoUrl: string): Promise<ProcessedVideoD
 
   } catch (error: any) {
     console.error("Error processing video URL:", error);
-    // This catches errors from getYouTubeTranscript or other unexpected issues
     return { videoUrl, summary, flashcards, notes, chapters, error: error.message || "An unexpected error occurred during video processing." };
   }
 }
 
 
-// This function is kept for generating more flashcards, as it only depends on the summary.
 export async function createFlashcardsFromSummary(summary: string): Promise<{ flashcards: GenerateFlashcardsOutput['flashcards'] | null, error?: string }> {
   try {
     const input: GenerateFlashcardsInput = { videoSummary: summary };
@@ -122,3 +113,19 @@ export async function askQuestionAboutSummary(
     return { answer: null, error: "Failed to get an answer for your question." };
   }
 }
+
+export async function generateAdvancedQuiz(
+  textContent: string,
+  numberOfQuestions: number = 5 // Default to 5 questions
+): Promise<{ quiz: GenerateQuizOutput | null, error?: string }> {
+  try {
+    const input: GenerateQuizInput = { textContent, numberOfQuestions };
+    const result: GenerateQuizOutput = await generateAdvancedQuizAction(input);
+    return { quiz: result };
+  } catch (error: any) {
+    console.error("Error generating advanced quiz:", error);
+    return { quiz: null, error: "Failed to generate the advanced quiz: " + error.message };
+  }
+}
+
+    

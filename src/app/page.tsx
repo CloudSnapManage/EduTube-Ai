@@ -3,19 +3,19 @@
 
 import * as React from "react";
 import type { Chapter } from "@/ai/flows/generate-chapters";
-// import type { TranscriptResponse } from "youtube-transcript"; // Removed TranscriptResponse import
+import type { QuizQuestion } from "@/ai/flows/generate-quiz"; // Import QuizQuestion type
 import { UrlInputForm } from "@/components/edutube/UrlInputForm";
 import { SummaryDisplay } from "@/components/edutube/SummaryDisplay";
 import { FlashcardViewer } from "@/components/edutube/FlashcardViewer";
 import { NoteDisplay } from "@/components/edutube/NoteDisplay";
 import { QuestionAnswerSection } from "@/components/edutube/QuestionAnswerSection";
 import { ChapterDisplay } from "@/components/edutube/ChapterDisplay";
-// import { InteractiveTranscriptDisplay } from "@/components/edutube/InteractiveTranscriptDisplay"; // Removed component import
 import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
-import { processVideoUrl, createFlashcardsFromSummary, type ProcessedVideoData } from "./actions";
+import { processVideoUrl, createFlashcardsFromSummary, type ProcessedVideoData, generateAdvancedQuiz } from "./actions"; // Import generateAdvancedQuiz
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button"; // Import Button
+import { AlertTriangle, Sparkles, Brain } from "lucide-react"; // Import Brain icon
 
 interface Flashcard {
   question: string;
@@ -28,10 +28,11 @@ export default function EduTubePage() {
   const [flashcards, setFlashcards] = React.useState<Flashcard[] | null>(null);
   const [notes, setNotes] = React.useState<string | null>(null);
   const [chapters, setChapters] = React.useState<Chapter[] | null>(null);
-  // const [rawTranscript, setRawTranscript] = React.useState<TranscriptResponse[] | null>(null); // Removed state for raw transcript
   const [isLoading, setIsLoading] = React.useState(false);
-  const [loadingStep, setLoadingStep] = React.useState<"" | "processing" | "summary" | "flashcards" | "notes" | "chapters">(""); // Removed "transcript" from loading steps
+  const [loadingStep, setLoadingStep] = React.useState<"" | "processing" | "summary" | "flashcards" | "notes" | "chapters">("");
   const [isGeneratingMoreFlashcards, setIsGeneratingMoreFlashcards] = React.useState(false);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = React.useState(false); // State for quiz generation
+  const [generatedQuiz, setGeneratedQuiz] = React.useState<QuizQuestion[] | null>(null); // State for quiz data
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
 
@@ -61,7 +62,7 @@ export default function EduTubePage() {
     setFlashcards(null);
     setNotes(null);
     setChapters(null);
-    // setRawTranscript(null); // Removed reset for raw transcript
+    setGeneratedQuiz(null); // Reset quiz on new URL
     setVideoUrl(submittedVideoUrl);
 
     toast({
@@ -82,7 +83,6 @@ export default function EduTubePage() {
       setFlashcards(null);
       setNotes(null);
       setChapters(null);
-      // setRawTranscript(null); // Ensure transcript is also null on error
     } else {
       setSummary(result.summary);
       toast({
@@ -121,7 +121,6 @@ export default function EduTubePage() {
         });
       }
 
-      // Chapters are generated regardless of summary success
       if (result.chapters && result.chapters.length > 0) {
         setChapters(result.chapters);
         toast({
@@ -129,15 +128,13 @@ export default function EduTubePage() {
           description: "Video chapters and timestamps are ready.",
           className: "bg-accent text-accent-foreground",
         });
-      } else if (!result.error || !result.error?.includes("transcript")) { // Keep this check as chapters depend on transcript indirectly
+      } else if (!result.error || !result.error?.includes("transcript")) { 
          toast({
           title: "📖 Chapter Generation Skipped",
           description: "Could not identify distinct chapters for this video.",
           variant: "default", className: "bg-muted text-muted-foreground"
         });
       }
-
-      // Removed raw transcript specific toasts
     }
     
     if (result.error) {
@@ -170,7 +167,7 @@ export default function EduTubePage() {
         variant: "destructive",
       });
     } else {
-      setFlashcards(flashcardsResult.flashcards);
+      setFlashcards(flashcardsResult.flashcards); // This will re-trigger FlashcardViewer with new props
       toast({
         title: "✨ New Flashcards Ready!",
         description: "A fresh set of flashcards has been generated.",
@@ -179,6 +176,48 @@ export default function EduTubePage() {
     }
     setIsGeneratingMoreFlashcards(false);
   };
+
+  const handleGenerateQuiz = async () => {
+    if (!summary && !notes) {
+      toast({
+        title: "No Content for Quiz",
+        description: "Please generate a summary or notes first to create a quiz.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsGeneratingQuiz(true);
+    setGeneratedQuiz(null);
+    setError(null);
+
+    toast({
+      title: "🧠 Generating Advanced Quiz...",
+      description: "AI is crafting some challenging questions. Hang tight!",
+    });
+
+    const contentForQuiz = notes || summary || ""; // Prefer notes if available, else summary
+    const quizResult = await generateAdvancedQuiz(contentForQuiz);
+
+    if (quizResult.error || !quizResult.quiz || quizResult.quiz.questions.length === 0) {
+      setError(quizResult.error || "Failed to generate quiz questions.");
+      toast({
+        title: "😕 Quiz Generation Failed",
+        description: quizResult.error || "Could not generate a quiz. The content might be too short or an issue occurred.",
+        variant: "destructive",
+      });
+    } else {
+      setGeneratedQuiz(quizResult.quiz.questions);
+      console.log("Generated Quiz Data:", quizResult.quiz); // Log to console for now
+      toast({
+        title: "🎉 Advanced Quiz Generated!",
+        description: `Quiz "${quizResult.quiz.quizTitle}" is ready. Check browser console for data (UI coming soon).`,
+        className: "bg-primary text-primary-foreground",
+        duration: 7000,
+      });
+    }
+    setIsGeneratingQuiz(false);
+  };
+
 
   const animationClasses = "animate-in fade-in-0 slide-in-from-top-5 duration-700 ease-out";
 
@@ -206,7 +245,7 @@ export default function EduTubePage() {
           </div>
         )}
         
-        {error && !isLoading && !isGeneratingMoreFlashcards && ( 
+        {error && !isLoading && !isGeneratingMoreFlashcards && !isGeneratingQuiz && ( 
           <Alert variant="destructive" className="mt-8 shadow-lg animate-in fade-in-0 duration-500">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Process Interrupted or Partially Failed</AlertTitle>
@@ -214,10 +253,10 @@ export default function EduTubePage() {
           </Alert>
         )}
         
-        {error && isGeneratingMoreFlashcards && (
+        {error && (isGeneratingMoreFlashcards || isGeneratingQuiz) && (
            <Alert variant="destructive" className="mt-4 shadow-lg animate-in fade-in-0 duration-500">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Flashcard Regeneration Failed</AlertTitle>
+            <AlertTitle>{isGeneratingMoreFlashcards ? "Flashcard Regeneration Failed" : "Quiz Generation Failed"}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -227,7 +266,6 @@ export default function EduTubePage() {
             <SummaryDisplay summary={summary} />
           </div>
         )}
-        {/* Removed InteractiveTranscriptDisplay component */}
         {chapters && videoUrl && !isLoading && (
           <div className={animationClasses}>
             <ChapterDisplay chapters={chapters} videoUrl={videoUrl} />
@@ -236,9 +274,10 @@ export default function EduTubePage() {
         {flashcards && !isLoading && (
           <div className={animationClasses}>
             <FlashcardViewer 
-              flashcards={flashcards} 
+              initialFlashcards={flashcards} 
               onGenerateMore={handleGenerateMoreFlashcards}
               isGeneratingMore={isGeneratingMoreFlashcards}
+              videoTitle={videoTitle} // Pass videoTitle for exports
             />
           </div>
         )}
@@ -248,6 +287,37 @@ export default function EduTubePage() {
           </div>
         )}
         
+        {!isLoading && summary && (
+           <div className={`${animationClasses} mt-8`}>
+            <Card className="shadow-xl rounded-lg overflow-hidden">
+              <CardHeader className="bg-muted/30">
+                <CardTitle className="flex items-center text-2xl font-semibold">
+                  <Brain className="mr-3 h-7 w-7 text-primary" />
+                  Advanced Quiz (Beta)
+                </CardTitle>
+                <CardDescription className="text-base">Test your knowledge with AI-generated quiz questions.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <Button onClick={handleGenerateQuiz} disabled={isGeneratingQuiz || (!summary && !notes)} className="w-full">
+                  {isGeneratingQuiz ? (
+                    <>
+                      <LoadingSpinner size={16} className="mr-2 py-0" /> Generating Quiz Questions...
+                    </>
+                  ) : (
+                    "Generate Advanced Quiz (UI Coming Soon)"
+                  )}
+                </Button>
+                {generatedQuiz && (
+                  <div className="mt-4 p-4 border rounded bg-secondary/30 text-sm">
+                    <p className="font-semibold">Quiz generated! Check your browser's console (Ctrl+Shift+J or Cmd+Opt+J) to see the raw quiz data structure. A full UI for displaying and taking the quiz is planned for a future update.</p>
+                    <p className="mt-2">Number of questions: {generatedQuiz.length}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+           </div>
+        )}
+
         {!isLoading && summary && (
            <div className={animationClasses}>
             <QuestionAnswerSection videoSummary={summary} />
@@ -263,3 +333,5 @@ export default function EduTubePage() {
     </div>
   );
 }
+
+    

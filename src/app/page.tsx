@@ -15,6 +15,7 @@ import { processVideoUrl, createFlashcardsFromSummary, type ProcessedVideoData, 
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button"; // Import Button
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"; // Added Card imports
 import { AlertTriangle, Sparkles, Brain } from "lucide-react"; // Import Brain icon
 
 interface Flashcard {
@@ -333,5 +334,3 @@ export default function EduTubePage() {
     </div>
   );
 }
-
-    

@@ -1,6 +1,6 @@
 'use server';
 
-import { YouTubeTranscript, type TranscriptResponse } from 'youtube-transcript';
+import { YoutubeTranscript, type TranscriptResponse } from 'youtube-transcript';
 
 /**
  * @fileOverview Service for interacting with YouTube, e.g., fetching transcripts.
@@ -16,7 +16,7 @@ import { YouTubeTranscript, type TranscriptResponse } from 'youtube-transcript';
  */
 export async function getYouTubeTranscript(videoUrl: string): Promise<string | null> {
   try {
-    const transcriptResponse: TranscriptResponse[] = await YouTubeTranscript.fetchTranscript(videoUrl);
+    const transcriptResponse: TranscriptResponse[] = await YoutubeTranscript.fetchTranscript(videoUrl);
     if (!transcriptResponse || transcriptResponse.length === 0) {
       console.warn(`No transcript found for video: ${videoUrl}`);
       return null; // No transcript available

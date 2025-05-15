@@ -66,7 +66,7 @@ Video Chapters (titles are in {{{targetLanguage}}} or should be treated as such)
 {{/each}}
 {{/if}}
 
-Generate only the Mermaid mindmap syntax string for the 'mindMapMermaidSyntax' field. Do not include any other text or explanations outside the Mermaid syntax block.
+Generate *only* the Mermaid mindmap syntax string for the 'mindMapMermaidSyntax' field. Do not include any other text or explanations outside the Mermaid syntax block itself (i.e., do not wrap it in markdown code fences like \`\`\`mermaid ... \`\`\` ).
 Ensure the output starts with \`mindmap\` and correctly follows Mermaid mindmap syntax.
 `,
 });
@@ -79,18 +79,29 @@ const generateMindMapOutlineFlow = ai.defineFlow(
   },
   async (input) => {
     const {output} = await generateMindMapOutlinePrompt(input);
-    if (!output || !output.mindMapMermaidSyntax || !output.mindMapMermaidSyntax.trim().startsWith("mindmap")) {
-        throw new Error('Failed to generate valid Mermaid mind map syntax.');
+
+    if (!output || !output.mindMapMermaidSyntax) {
+        throw new Error('Failed to generate mind map syntax: No output received from AI.');
     }
-    // Basic cleanup: ensure it doesn't include the markdown ```mermaid block
+
     let syntax = output.mindMapMermaidSyntax;
-    if (syntax.startsWith("```mermaid")) {
-        syntax = syntax.substring("```mermaid".length);
+
+    // Basic cleanup: ensure it doesn't include the markdown ```mermaid block
+    if (syntax.trim().startsWith("```mermaid")) {
+        syntax = syntax.substring(syntax.indexOf("mindmap")); // Get content starting from "mindmap"
     }
     if (syntax.endsWith("```")) {
-        syntax = syntax.substring(0, syntax.length - "```".length);
+        syntax = syntax.substring(0, syntax.lastIndexOf("```"));
     }
     
-    return { mindMapMermaidSyntax: syntax.trim() };
+    syntax = syntax.trim(); // Trim whitespace after cleanup
+
+    if (!syntax.startsWith("mindmap")) {
+        console.error("Invalid Mermaid Syntax Received:", output.mindMapMermaidSyntax);
+        throw new Error('Failed to generate valid Mermaid mind map syntax. Output did not start with "mindmap" after cleanup.');
+    }
+    
+    return { mindMapMermaidSyntax: syntax };
   }
 );
+

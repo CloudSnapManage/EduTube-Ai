@@ -5,6 +5,7 @@ import * as React from "react";
 import type { SummaryStyle } from "@/ai/flows/summarize-youtube-video";
 import type { Chapter } from "@/ai/flows/generate-chapters";
 import type { GenerateQuizOutput } from "@/ai/flows/generate-quiz"; 
+import type { GenerateExamOutput } from "@/ai/flows/generate-exam"; // New
 
 import { UrlInputForm } from "@/components/edutube/UrlInputForm";
 import { SummaryDisplay } from "@/components/edutube/SummaryDisplay";
@@ -18,15 +19,25 @@ import { FurtherStudyDisplay } from "@/components/edutube/FurtherStudyDisplay";
 import { MindMapDisplay } from "@/components/edutube/MindMapDisplay";
 import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
 import { EmbeddedVideoPlayer } from "@/components/edutube/EmbeddedVideoPlayer";
+import { ExamDisplay } from "@/components/edutube/ExamDisplay"; // New
 
-import { processVideoUrl, createFlashcardsFromSummary, type ProcessedVideoData, generateAdvancedQuiz, askQuestionAboutSummary, type AnswerUserQuestionInput } from "./actions"; 
+import { 
+  processVideoUrl, 
+  createFlashcardsFromSummary, 
+  type ProcessedVideoData, 
+  generateAdvancedQuiz, 
+  askQuestionAboutSummary, 
+  type AnswerUserQuestionInput,
+  generateExamAction // New
+} from "./actions"; 
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, Sparkles, BookCheck, Languages, Settings2, MessageSquareMore, Network, ListChecks } from "lucide-react"; 
+import { Input } from "@/components/ui/input"; // New
+import { AlertTriangle, Sparkles, BookCheck, Languages, Settings2, MessageSquareMore, Network, ListChecks, BookOpenCheck, FileSignature } from "lucide-react"; 
 import { getYouTubeVideoId } from "@/lib/youtube-utils";
 
 interface Flashcard {
@@ -79,6 +90,12 @@ export default function EduTubePage() {
   const [selectedSummaryStyle, setSelectedSummaryStyle] = React.useState<SummaryStyle>("medium");
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>("English");
 
+  // New state for Exam Mode
+  const [isGeneratingExam, setIsGeneratingExam] = React.useState(false);
+  const [generatedExamData, setGeneratedExamData] = React.useState<GenerateExamOutput | null>(null);
+  const [examTotalMarks, setExamTotalMarks] = React.useState<number>(50);
+
+
   const { toast } = useToast();
 
   const getYouTubeVideoTitleFromUrl = (url: string): string => {
@@ -100,6 +117,7 @@ export default function EduTubePage() {
     setFurtherStudyPrompts(null);
     setMindMapOutline(null);
     setGeneratedQuizData(null);
+    setGeneratedExamData(null); // Reset exam data
     setCurrentVideoId(null);
     setPlayerTimestamp(undefined);
     setError(null);
@@ -141,11 +159,10 @@ export default function EduTubePage() {
       if (result.flashcards && result.flashcards.length > 0) {
         setFlashcards(result.flashcards);
         toast({ title: "✨ Flashcards Ready!", description: `Flashcards in ${selectedLanguage} generated.`, className: "bg-accent text-accent-foreground" });
-      } else if (result.summary) { // Only show skipped if summary succeeded
+      } else if (result.summary) { 
          toast({ title: "📭 Flashcard Generation Skipped/Failed", description: `Could not generate flashcards in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
       
-      // Process notes
       if (result.notes) {
         setNotes(result.notes);
         toast({ title: "📝 Revision Notes Ready!", description: `Detailed notes in ${selectedLanguage} generated.`, className: "bg-accent text-accent-foreground" });
@@ -153,15 +170,13 @@ export default function EduTubePage() {
          toast({ title: "📑 Note Generation Skipped/Failed", description: `Could not generate notes in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
 
-      // Process chapters
       if (result.chapters && result.chapters.length > 0) {
         setChapters(result.chapters);
         toast({ title: "📚 Chapters Identified!", description: `Video chapters (titles in ${selectedLanguage}) ready.`, className: "bg-accent text-accent-foreground" });
-      } else if (!result.error || (result.error && !result.error.includes("transcript"))) { // Don't show if transcript itself failed
+      } else if (!result.error || (result.error && !result.error.includes("transcript"))) { 
          toast({ title: "📖 Chapter Generation Skipped/Failed", description: `Could not generate chapters with titles in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
 
-      // Process Key Takeaways
       if (result.keyTakeaways && result.keyTakeaways.length > 0) {
         setKeyTakeaways(result.keyTakeaways);
         toast({ title: "🔑 Key Takeaways Extracted!", description: `Key points in ${selectedLanguage} ready.`, className: "bg-accent text-accent-foreground" });
@@ -169,7 +184,6 @@ export default function EduTubePage() {
         toast({ title: "📉 Key Takeaways Skipped/Failed", description: `Could not generate key takeaways in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
 
-      // Process Further Study Prompts
       if (result.furtherStudyPrompts && result.furtherStudyPrompts.length > 0) {
         setFurtherStudyPrompts(result.furtherStudyPrompts);
         toast({ title: "💡 Further Study Prompts Generated!", description: `Exploration ideas in ${selectedLanguage} ready.`, className: "bg-accent text-accent-foreground" });
@@ -177,7 +191,6 @@ export default function EduTubePage() {
         toast({ title: "🤔 Further Study Prompts Skipped/Failed", description: `Could not generate further study prompts in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
       
-      // Process Mind Map Outline
       if (result.mindMapOutline) {
         setMindMapOutline(result.mindMapOutline);
         toast({ title: "🗺️ Mind Map Outline Created!", description: `Textual mind map in ${selectedLanguage} ready.`, className: "bg-accent text-accent-foreground" });
@@ -185,7 +198,7 @@ export default function EduTubePage() {
         toast({ title: "🕸️ Mind Map Outline Skipped/Failed", description: `Could not generate mind map outline in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
 
-      if (result.error) { // Partial failures
+      if (result.error) { 
         setError(prevError => prevError ? `${prevError} Additionally: ${result.error}` : result.error);
         if (!result.summary) setCurrentVideoId(null); 
       }
@@ -240,6 +253,39 @@ export default function EduTubePage() {
     setIsGeneratingQuiz(false);
     setLoadingStep("");
   };
+
+  const handleGenerateExam = async () => {
+    const contentForExam = notes || summary || "";
+    if (!contentForExam) {
+      toast({ title: "No Content for Exam", description: "Please generate a summary or notes first to create an exam.", variant: "destructive" });
+      return;
+    }
+    if (examTotalMarks < 10 || examTotalMarks > 100) {
+        toast({ title: "Invalid Marks", description: "Conceptual total marks should be between 10 and 100.", variant: "destructive" });
+        return;
+    }
+
+    setIsGeneratingExam(true);
+    setLoadingStep("exam questions");
+    setGeneratedExamData(null);
+    setError(null);
+
+    toast({ title: "📝 Generating Exam...", description: `AI is preparing exam questions in ${selectedLanguage} (for approx. ${examTotalMarks} marks).`, });
+    
+    const examResult = await generateExamAction(contentForExam, selectedLanguage, examTotalMarks);
+
+    if (examResult.error || !examResult.exam || examResult.exam.questions.length === 0) {
+      setError(examResult.error || "Failed to generate exam questions.");
+      toast({ title: "😕 Exam Generation Failed", description: examResult.error || `Could not generate an exam in ${selectedLanguage}.`, variant: "destructive" });
+      setGeneratedExamData(null);
+    } else {
+      setGeneratedExamData(examResult.exam);
+      toast({ title: "📜 Exam Ready!", description: `Exam "${examResult.exam.examTitle}" in ${selectedLanguage} is ready to view/download.`, className: "bg-primary text-primary-foreground", duration: 7000 });
+    }
+    setIsGeneratingExam(false);
+    setLoadingStep("");
+  };
+
 
   const handleChapterClick = (timeInSeconds: number) => {
     setPlayerTimestamp(timeInSeconds);
@@ -310,7 +356,7 @@ export default function EduTubePage() {
           </div>
         )}
         
-        {error && !isLoading && !isGeneratingMoreFlashcards && !isGeneratingQuiz && ( 
+        {error && !isLoading && !isGeneratingMoreFlashcards && !isGeneratingQuiz && !isGeneratingExam && ( 
           <Alert variant="destructive" className="mt-8 shadow-lg animate-in fade-in-0 duration-500">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Process Interrupted or Partially Failed</AlertTitle>
@@ -318,10 +364,10 @@ export default function EduTubePage() {
           </Alert>
         )}
         
-        {error && (isGeneratingMoreFlashcards || isGeneratingQuiz) && (
+        {error && (isGeneratingMoreFlashcards || isGeneratingQuiz || isGeneratingExam) && (
            <Alert variant="destructive" className="mt-4 shadow-lg animate-in fade-in-0 duration-500">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>{isGeneratingMoreFlashcards ? "Flashcard Regeneration Failed" : "Quiz Generation Failed"}</AlertTitle>
+            <AlertTitle>{isGeneratingMoreFlashcards ? "Flashcard Regeneration Failed" : isGeneratingQuiz ? "Quiz Generation Failed" : "Exam Generation Failed"}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -416,6 +462,58 @@ export default function EduTubePage() {
         )}
 
         {!isLoading && summary && (
+           <div className={`${animationClasses} mt-8`}>
+            {!generatedExamData && !isGeneratingExam && (
+              <Card className="shadow-xl rounded-lg overflow-hidden">
+                <CardHeader className="bg-muted/30">
+                  <CardTitle className="flex items-center text-2xl font-semibold">
+                    <FileSignature className="mr-3 h-7 w-7 text-primary" />
+                    Create an Exam
+                  </CardTitle>
+                  <CardDescription className="text-base">Generate exam-style questions based on the video content (in {selectedLanguage}).</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <div>
+                    <Label htmlFor="exam-total-marks" className="text-sm font-medium text-muted-foreground">Conceptual Total Marks (10-100):</Label>
+                    <Input 
+                      id="exam-total-marks"
+                      type="number" 
+                      value={examTotalMarks}
+                      onChange={(e) => setExamTotalMarks(parseInt(e.target.value, 10) || 0)}
+                      min={10}
+                      max={100}
+                      className="mt-1 h-11"
+                      disabled={isGeneratingExam}
+                    />
+                  </div>
+                  <Button onClick={handleGenerateExam} disabled={isGeneratingExam || (!summary && !notes)} className="w-full">
+                    {isGeneratingExam ? (
+                      <>
+                        <LoadingSpinner size={16} className="mr-2 py-0" /> Generating Exam Questions...
+                      </>
+                    ) : (
+                      "Generate Exam"
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            
+            {isGeneratingExam && loadingStep === "exam questions" && (
+                <div className="flex flex-col items-center justify-center p-10 my-8 border rounded-lg bg-card shadow-lg">
+                    <LoadingSpinner message={`AI is preparing your exam questions in ${selectedLanguage}...`} size={40} />
+                    <p className="text-muted-foreground mt-3">This can take a few moments.</p>
+                </div>
+            )}
+
+            {generatedExamData && !isGeneratingExam && (
+              <ExamDisplay examData={generatedExamData} videoTitle={videoTitle} targetLanguage={selectedLanguage} />
+            )}
+           </div>
+        )}
+
+
+        {!isLoading && summary && (
            <div className={animationClasses}>
             <QuestionAnswerSection videoSummary={summary} targetLanguage={selectedLanguage} />
            </div>
@@ -430,5 +528,3 @@ export default function EduTubePage() {
     </div>
   );
 }
-
-    

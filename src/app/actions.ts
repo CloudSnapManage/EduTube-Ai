@@ -13,6 +13,7 @@ import { generateAdvancedQuizAction, type GenerateQuizInput, type GenerateQuizOu
 import { generateKeyTakeaways, type GenerateKeyTakeawaysInput, type GenerateKeyTakeawaysOutput } from "@/ai/flows/generate-key-takeaways";
 import { generateFurtherStudyPrompts, type GenerateFurtherStudyInput, type GenerateFurtherStudyOutput } from "@/ai/flows/generate-further-study";
 import { generateMindMapOutline, type GenerateMindMapOutlineInput, type GenerateMindMapOutlineOutput } from "@/ai/flows/generate-mindmap-outline";
+import { generateExam, type GenerateExamInput, type GenerateExamOutput } from "@/ai/flows/generate-exam";
 
 
 export interface ProcessedVideoData {
@@ -68,7 +69,7 @@ export async function processVideoUrl(
         generateNotes({ videoSummary: summary, ...commonInput }),
         generateKeyTakeaways({ videoSummary: summary, ...commonInput }),
         generateFurtherStudyPrompts({ videoSummary: summary, ...commonInput }),
-        generateMindMapOutline({ videoSummary: summary, chapters, ...commonInput }), // Chapters might be null here initially if run before chapter generation
+        // Mind map is handled after chapters
       ]);
 
       if (results[0].status === 'fulfilled') flashcards = (results[0].value as GenerateFlashcardsOutput).flashcards;
@@ -83,8 +84,6 @@ export async function processVideoUrl(
       if (results[3].status === 'fulfilled') furtherStudyPrompts = (results[3].value as GenerateFurtherStudyOutput).furtherStudyPrompts;
       else { console.error("Error generating further study prompts:", results[3].reason); accumulatedError = (accumulatedError ? accumulatedError + " " : "") + "Failed to generate further study prompts."; }
       
-      // Mind map depends on chapters, which are generated next. So call it again after chapters if needed or include chapters in its logic.
-      // For now, let's call it here and it might use summary mostly. If chapters are critical, it might need re-ordering.
 
     } else {
         if (!accumulatedError) accumulatedError = "Summary generation failed, skipping dependent AI features.";
@@ -93,27 +92,19 @@ export async function processVideoUrl(
     
     try {
       const segmentsForChapters = rawTranscriptResult.map(t => ({ text: t.text, offset: t.offset }));
-      // Pass targetLanguage to generateChapters
       const chaptersInput: GenerateChaptersInput = { transcriptSegments: segmentsForChapters, targetLanguage };
       const chaptersResult: GenerateChaptersOutput = await generateChapters(chaptersInput);
       chapters = chaptersResult.chapters;
 
-      // Regenerate mind map if chapters are crucial and summary exists
-      if (summary && chapters && chapters.length > 0) {
+      // Generate mind map after summary and chapters are available
+      if (summary) {
           try {
-            const mindMapResult = await generateMindMapOutline({ videoSummary: summary, chapters, ...commonInput });
+            const mindMapInput: GenerateMindMapOutlineInput = { videoSummary: summary, chapters: chapters || [], ...commonInput };
+            const mindMapResult = await generateMindMapOutline(mindMapInput);
             mindMapOutline = mindMapResult.mindMapOutline;
           } catch (e: any) {
-            console.error("Error generating mind map (with chapters):", e);
-            accumulatedError = (accumulatedError ? accumulatedError + " " : "") + "Failed to generate mind map outline with chapters.";
-          }
-      } else if (summary && !mindMapOutline) { // If mind map was not generated or chapters are empty, try with summary only
-          try {
-            const mindMapResult = await generateMindMapOutline({ videoSummary: summary, ...commonInput });
-            mindMapOutline = mindMapResult.mindMapOutline;
-          } catch (e: any) {
-            console.error("Error generating mind map (summary only):", e);
-            // Don't add to error if it failed earlier, this is a fallback
+            console.error("Error generating mind map:", e);
+            accumulatedError = (accumulatedError ? accumulatedError + " " : "") + "Failed to generate mind map outline.";
           }
       }
 
@@ -175,4 +166,18 @@ export async function generateAdvancedQuiz(
   }
 }
 
+export async function generateExamAction(
+  textContent: string,
+  targetLanguage: string,
+  totalMarks: number 
+): Promise<{ exam: GenerateExamOutput | null, error?: string }> {
+  try {
+    const input: GenerateExamInput = { textContent, targetLanguage, totalMarks };
+    const result: GenerateExamOutput = await generateExam(input);
+    return { exam: result };
+  } catch (error: any) {
+    console.error("Error generating exam:", error);
+    return { exam: null, error: "Failed to generate the exam: " + error.message };
+  }
+}
     

@@ -8,8 +8,8 @@ import '@/ai/flows/generate-notes.ts';
 import '@/ai/flows/answer-question-flow.ts';
 import '@/ai/flows/generate-chapters.ts';
 import '@/ai/flows/generate-quiz.ts';
-import '@/ai/flows/generate-key-takeaways.ts'; // New
-import '@/ai/flows/generate-further-study.ts'; // New
-import '@/ai/flows/generate-mindmap-outline.ts'; // New
-
+import '@/ai/flows/generate-key-takeaways.ts'; 
+import '@/ai/flows/generate-further-study.ts'; 
+import '@/ai/flows/generate-mindmap-outline.ts'; 
+import '@/ai/flows/generate-exam.ts'; // New
     

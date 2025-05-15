@@ -2,78 +2,138 @@
 "use client";
 
 import * as React from "react";
+import mermaid from "mermaid";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Network } from "lucide-react"; // Or Workflow, GitFork
+import { Network, AlertTriangle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface MindMapDisplayProps {
-  outline: string;
+  mermaidSyntax: string;
 }
 
-export function MindMapDisplay({ outline }: MindMapDisplayProps) {
-  if (!outline) {
-    return null; 
-  }
+// Generate a unique ID for each instance of the component
+let mindmapIdCounter = 0;
+const generateMindmapId = () => `mermaid-mindmap-${mindmapIdCounter++}`;
 
-  // Basic Markdown-to-HTML for hierarchical lists (hyphens/asterisks and indentation)
-  // This is a simplified renderer. For full Markdown, a library would be better.
-  const renderMarkdownList = (markdown: string) => {
-    const lines = markdown.split('\n');
-    let html = '<ul>';
-    let currentLevel = 0;
+export function MindMapDisplay({ mermaidSyntax }: MindMapDisplayProps) {
+  const [svg, setSvg] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const mindmapContainerId = React.useMemo(() => generateMindmapId(), []);
+  const { toast } = useToast();
 
-    lines.forEach(line => {
-      const trimmedLine = line.trimStart();
-      const match = trimmedLine.match(/^(\s*)[-*+]\s+(.*)/);
-      if (match) {
-        const indentation = match[1].length; // Approximation of level based on spaces
-        const itemText = match[2];
-        const level = Math.floor(indentation / 2); // Assuming 2 spaces per indent level
+  React.useEffect(() => {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default',
+      // securityLevel: 'loose', // Uncomment if you face issues with complex diagrams, but be aware of security implications.
+      mindmap: {
+        padding: 15,
+        maxGrowth: 4,
+      },
+      fontFamily: "var(--font-geist-sans)", // Use app's font if possible
+    });
 
-        if (level > currentLevel) {
-          for (let i = 0; i < (level - currentLevel); i++) html += '<ul>';
-        } else if (level < currentLevel) {
-          for (let i = 0; i < (currentLevel - level); i++) html += '</ul></li>';
-        } else if (currentLevel > 0 && level === currentLevel) {
-            html += '</li>'; // Close previous item at same level
+    const renderMermaid = async () => {
+      if (mermaidSyntax && mermaidSyntax.trim().startsWith("mindmap")) {
+        try {
+          // Mermaid's render function needs a unique ID for the container
+          // It will directly manipulate the DOM element with this ID.
+          // To get the SVG string, we use a temporary invisible div.
+          const tempDiv = document.createElement('div');
+          tempDiv.style.visibility = 'hidden';
+          tempDiv.id = `temp-${mindmapContainerId}`;
+          document.body.appendChild(tempDiv);
+
+          const { svg: renderedSvg, bindFunctions } = await mermaid.render(tempDiv.id, mermaidSyntax);
+          setSvg(renderedSvg);
+          setError(null);
+          
+          document.body.removeChild(tempDiv); // Clean up the temporary div
+
+        } catch (e: any) {
+          console.error("Mermaid rendering error:", e);
+          setError(`Failed to render mind map: ${e.message || "Invalid Mermaid syntax"}. Please try regenerating.`);
+          setSvg(null);
+          toast({
+            title: "Mind Map Rendering Error",
+            description: `Could not display the mind map. The AI might have generated invalid syntax. Error: ${e.message}`,
+            variant: "destructive",
+            duration: 7000,
+          });
         }
-        
-        html += `<li>${itemText}`;
-        currentLevel = level;
-      } else if (trimmedLine) { // Non-list item, just append (could be improved)
-         if (currentLevel > 0) { // Close any open lists if we encounter non-list text
-            for (let i = 0; i < currentLevel; i++) html += '</ul></li>';
-            currentLevel = 0;
-         }
-         html += `</ul><p>${trimmedLine}</p><ul>`; // Wrap non-list text in p, restart ul for safety
+      } else if (mermaidSyntax) {
+         setError("Invalid or empty Mermaid syntax provided for mind map.");
+         setSvg(null);
+      }
+    };
+
+    renderMermaid();
+    
+    // Re-render if theme changes
+    const observer = new MutationObserver((mutationsList) => {
+      for (const mutation of mutationsList) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default',
+            mindmap: { padding: 15, maxGrowth: 4 },
+            fontFamily: "var(--font-geist-sans)",
+          });
+          renderMermaid(); // Re-render with new theme
+        }
       }
     });
 
-    for (let i = 0; i < currentLevel; i++) html += '</ul></li>'; // Close any remaining open tags
-    html += '</ul>';
-    
-    // Remove empty <ul></ul> if nothing was rendered
-    if(html === "<ul></ul>" || html === "<ul><ul></ul></li></ul>" ) return "<p class='text-muted-foreground'>Outline format not recognized or empty.</p>"
-    return html;
-  };
+    observer.observe(document.documentElement, { attributes: true });
 
+    return () => {
+      observer.disconnect();
+      // Clean up any temporary divs if component unmounts during an error state
+      const tempDiv = document.getElementById(`temp-${mindmapContainerId}`);
+      if (tempDiv) document.body.removeChild(tempDiv);
+    };
+
+  }, [mermaidSyntax, mindmapContainerId, toast]);
+
+  if (!mermaidSyntax && !error) {
+    return null; 
+  }
 
   return (
     <Card className="mt-8 shadow-xl rounded-lg overflow-hidden">
       <CardHeader className="bg-muted/30">
         <CardTitle className="flex items-center text-2xl font-semibold">
           <Network className="mr-3 h-7 w-7 text-primary" />
-          Conceptual Outline (Mind Map)
+          Conceptual Mind Map
         </CardTitle>
-        <CardDescription className="text-base">A hierarchical text representation of the video's structure.</CardDescription>
+        <CardDescription className="text-base">A graphical representation of the video's structure. May require regeneration if syntax is invalid.</CardDescription>
       </CardHeader>
       <CardContent className="p-6">
-        <ScrollArea className="h-80 w-full rounded-md border p-4 bg-background">
-          <div 
-            className="prose prose-sm max-w-none prose-ul:my-1 prose-li:my-0.5 dark:prose-invert"
-            dangerouslySetInnerHTML={{ __html: renderMarkdownList(outline) }} 
-          />
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Rendering Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        <ScrollArea className="h-[500px] w-full rounded-md border p-2 bg-background flex items-center justify-center">
+          {svg ? (
+            // The container for the SVG. Mermaid directly injects into this.
+            // For safety with dangerouslySetInnerHTML, ensure the SVG content is trusted.
+            <div
+              className="mermaid-mindmap-container flex justify-center items-center w-full h-full [&_svg]:max-w-full [&_svg]:max-h-full"
+              dangerouslySetInnerHTML={{ __html: svg }}
+            />
+          ) : !error ? (
+            <p className="text-muted-foreground">Generating mind map visualization...</p>
+          ) : null}
         </ScrollArea>
+         {mermaidSyntax && !svg && !error && (
+            <div className="text-center py-4">
+                <p className="text-muted-foreground">Loading mind map visualization...</p>
+            </div>
+        )}
       </CardContent>
     </Card>
   );

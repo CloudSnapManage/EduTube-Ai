@@ -2,19 +2,16 @@
 'use server';
 
 /**
- * @fileOverview Defines a Genkit flow for generating a textual mind map outline from a video summary and chapters.
+ * @fileOverview Defines a Genkit flow for generating a graphical mind map outline using Mermaid syntax from a video summary and chapters.
  *
- * - generateMindMapOutline - A function that takes a video summary and optional chapters, returning a textual mind map.
+ * - generateMindMapOutline - A function that takes a video summary and optional chapters, returning Mermaid syntax for a mind map.
  * - GenerateMindMapOutlineInput - The input type for the generateMindMapOutline function.
  * - GenerateMindMapOutlineOutput - The return type for the generateMindMapOutline function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-// ChapterSchema is no longer imported from './generate-chapters'
-// We will define a local schema for validation if needed or rely on the type from generate-chapters for data structure.
 
-// Local Chapter schema definition for input validation within this flow
 const LocalChapterSchemaDefinition = z.object({
   title: z.string().describe('A concise and descriptive title for the chapter, ideally in the target language.'),
   startTimeSeconds: z.number().int().nonnegative().describe('The start time of the chapter in whole seconds from the beginning of the video.'),
@@ -23,12 +20,12 @@ const LocalChapterSchemaDefinition = z.object({
 const GenerateMindMapOutlineInputSchema = z.object({
   videoSummary: z.string().describe('A summary of the video content.'),
   chapters: z.array(LocalChapterSchemaDefinition).optional().describe('Optional list of chapters derived from the video, which can help structure the mind map.'),
-  targetLanguage: z.string().optional().default("English").describe("The language for the mind map outline."),
+  targetLanguage: z.string().optional().default("English").describe("The language for the mind map content."),
 });
 export type GenerateMindMapOutlineInput = z.infer<typeof GenerateMindMapOutlineInputSchema>;
 
 const GenerateMindMapOutlineOutputSchema = z.object({
-  mindMapOutline: z.string().describe('A textual, hierarchical outline representing a mind map of the video content, formatted using Markdown (e.g., using hyphens and indentation for levels). The outline should be in the target language.'),
+  mindMapMermaidSyntax: z.string().describe('A mind map of the video content, formatted using Mermaid.js mindmap syntax. The mind map content should be in the target language.'),
 });
 export type GenerateMindMapOutlineOutput = z.infer<typeof GenerateMindMapOutlineOutputSchema>;
 
@@ -40,18 +37,24 @@ const generateMindMapOutlinePrompt = ai.definePrompt({
   name: 'generateMindMapOutlinePrompt',
   input: {schema: GenerateMindMapOutlineInputSchema},
   output: {schema: GenerateMindMapOutlineOutputSchema},
-  prompt: `You are an expert at creating structured, hierarchical outlines that can represent a mind map.
-Based on the following video summary{{#if chapters}} and chapter list{{/if}}, generate a textual mind map outline.
-The outline must be in {{{targetLanguage}}}.
-Use Markdown-style formatting for the hierarchy:
-- Main Topic (Level 1)
-  - Sub-topic (Level 2)
-    - Detail or Sub-sub-topic (Level 3)
-      - Further Detail (Level 4)
-  - Another Sub-topic (Level 2)
-- Another Main Topic (Level 1)
+  prompt: `You are an expert at creating structured mind maps using Mermaid.js syntax.
+Based on the following video summary{{#if chapters}} and chapter list{{/if}}, generate a mind map in Mermaid syntax.
+The content of the mind map (node labels) must be in {{{targetLanguage}}}.
 
-Focus on identifying the core concepts, their relationships, and supporting details. If chapters are provided, use them to help structure the main branches of your mind map.
+Use the following Mermaid mindmap syntax structure:
+\`\`\`mermaid
+mindmap
+  root((Main Video Topic - in {{{targetLanguage}}}))
+    (Chapter 1 Title or Main Idea 1 - in {{{targetLanguage}}})
+      (Sub-topic 1.1 - in {{{targetLanguage}}})
+      (Sub-topic 1.2 - in {{{targetLanguage}}})
+        (Detail 1.2.1 - in {{{targetLanguage}}})
+    (Chapter 2 Title or Main Idea 2 - in {{{targetLanguage}}})
+      (Sub-topic 2.1 - in {{{targetLanguage}}})
+\`\`\`
+Ensure the root node clearly states the main topic of the video.
+If chapters are provided, use them to help structure the main branches of your mind map. If not, derive main branches from the summary.
+Keep node labels concise yet descriptive. Aim for 3-5 levels of depth where appropriate.
 
 Video Summary (this summary is already in {{{targetLanguage}}} or should be treated as such):
 {{{videoSummary}}}
@@ -63,7 +66,8 @@ Video Chapters (titles are in {{{targetLanguage}}} or should be treated as such)
 {{/each}}
 {{/if}}
 
-Generate the mind map outline text in {{{targetLanguage}}}.
+Generate only the Mermaid mindmap syntax string for the 'mindMapMermaidSyntax' field. Do not include any other text or explanations outside the Mermaid syntax block.
+Ensure the output starts with \`mindmap\` and correctly follows Mermaid mindmap syntax.
 `,
 });
 
@@ -75,10 +79,18 @@ const generateMindMapOutlineFlow = ai.defineFlow(
   },
   async (input) => {
     const {output} = await generateMindMapOutlinePrompt(input);
-    if (!output) {
-        throw new Error('Failed to generate mind map outline.');
+    if (!output || !output.mindMapMermaidSyntax || !output.mindMapMermaidSyntax.trim().startsWith("mindmap")) {
+        throw new Error('Failed to generate valid Mermaid mind map syntax.');
     }
-    return output;
+    // Basic cleanup: ensure it doesn't include the markdown ```mermaid block
+    let syntax = output.mindMapMermaidSyntax;
+    if (syntax.startsWith("```mermaid")) {
+        syntax = syntax.substring("```mermaid".length);
+    }
+    if (syntax.endsWith("```")) {
+        syntax = syntax.substring(0, syntax.length - "```".length);
+    }
+    
+    return { mindMapMermaidSyntax: syntax.trim() };
   }
 );
-

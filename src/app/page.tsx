@@ -5,7 +5,7 @@ import * as React from "react";
 import type { SummaryStyle } from "@/ai/flows/summarize-youtube-video";
 import type { Chapter } from "@/ai/flows/generate-chapters";
 import type { GenerateQuizOutput } from "@/ai/flows/generate-quiz"; 
-import type { GenerateExamOutput } from "@/ai/flows/generate-exam"; // New
+import type { GenerateExamOutput } from "@/ai/flows/generate-exam"; 
 
 import { UrlInputForm } from "@/components/edutube/UrlInputForm";
 import { SummaryDisplay } from "@/components/edutube/SummaryDisplay";
@@ -19,7 +19,7 @@ import { FurtherStudyDisplay } from "@/components/edutube/FurtherStudyDisplay";
 import { MindMapDisplay } from "@/components/edutube/MindMapDisplay";
 import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
 import { EmbeddedVideoPlayer } from "@/components/edutube/EmbeddedVideoPlayer";
-import { ExamDisplay } from "@/components/edutube/ExamDisplay"; // New
+import { ExamDisplay } from "@/components/edutube/ExamDisplay"; 
 
 import { 
   processVideoUrl, 
@@ -28,7 +28,7 @@ import {
   generateAdvancedQuiz, 
   askQuestionAboutSummary, 
   type AnswerUserQuestionInput,
-  generateExamAction // New
+  generateExamAction 
 } from "./actions"; 
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -36,8 +36,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input"; // New
-import { AlertTriangle, Sparkles, BookCheck, Languages, Settings2, MessageSquareMore, Network, ListChecks, BookOpenCheck, FileSignature } from "lucide-react"; 
+import { Input } from "@/components/ui/input"; 
+import { AlertTriangle, Sparkles, BookCheck, Languages, Settings2, MessageSquareMore, Network, ListChecks, BookOpenCheck, FileSignature, Brain } from "lucide-react"; 
 import { getYouTubeVideoId } from "@/lib/youtube-utils";
 
 interface Flashcard {
@@ -78,7 +78,7 @@ export default function EduTubePage() {
   const [chapters, setChapters] = React.useState<Chapter[] | null>(null);
   const [keyTakeaways, setKeyTakeaways] = React.useState<string[] | null>(null);
   const [furtherStudyPrompts, setFurtherStudyPrompts] = React.useState<string[] | null>(null);
-  const [mindMapOutline, setMindMapOutline] = React.useState<string | null>(null);
+  const [mindMapMermaidSyntax, setMindMapMermaidSyntax] = React.useState<string | null>(null);
   
   const [isLoading, setIsLoading] = React.useState(false);
   const [loadingStep, setLoadingStep] = React.useState<string>("");
@@ -90,7 +90,6 @@ export default function EduTubePage() {
   const [selectedSummaryStyle, setSelectedSummaryStyle] = React.useState<SummaryStyle>("medium");
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>("English");
 
-  // New state for Exam Mode
   const [isGeneratingExam, setIsGeneratingExam] = React.useState(false);
   const [generatedExamData, setGeneratedExamData] = React.useState<GenerateExamOutput | null>(null);
   const [examTotalMarks, setExamTotalMarks] = React.useState<number>(50);
@@ -115,9 +114,9 @@ export default function EduTubePage() {
     setChapters(null);
     setKeyTakeaways(null);
     setFurtherStudyPrompts(null);
-    setMindMapOutline(null);
+    setMindMapMermaidSyntax(null);
     setGeneratedQuizData(null);
-    setGeneratedExamData(null); // Reset exam data
+    setGeneratedExamData(null); 
     setCurrentVideoId(null);
     setPlayerTimestamp(undefined);
     setError(null);
@@ -147,7 +146,6 @@ export default function EduTubePage() {
         variant: "destructive",
       });
     } else {
-      // Process summary
       if (result.summary) {
         setSummary(result.summary);
         toast({ title: "✅ Summary Generated!", description: `Summary (${selectedSummaryStyle}, ${selectedLanguage}) created.`, className: "bg-primary text-primary-foreground" });
@@ -155,7 +153,6 @@ export default function EduTubePage() {
         toast({ title: "⚠️ Summary Failed", description: `Could not generate summary in ${selectedLanguage}.`, variant: "destructive" });
       }
 
-      // Process flashcards
       if (result.flashcards && result.flashcards.length > 0) {
         setFlashcards(result.flashcards);
         toast({ title: "✨ Flashcards Ready!", description: `Flashcards in ${selectedLanguage} generated.`, className: "bg-accent text-accent-foreground" });
@@ -191,11 +188,11 @@ export default function EduTubePage() {
         toast({ title: "🤔 Further Study Prompts Skipped/Failed", description: `Could not generate further study prompts in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
       
-      if (result.mindMapOutline) {
-        setMindMapOutline(result.mindMapOutline);
-        toast({ title: "🗺️ Mind Map Outline Created!", description: `Textual mind map in ${selectedLanguage} ready.`, className: "bg-accent text-accent-foreground" });
+      if (result.mindMapOutline) { // This is now Mermaid syntax
+        setMindMapMermaidSyntax(result.mindMapOutline);
+        toast({ title: "🗺️ Mind Map Syntax Created!", description: `Mermaid syntax for mind map in ${selectedLanguage} ready.`, className: "bg-accent text-accent-foreground" });
       } else if (result.summary) {
-        toast({ title: "🕸️ Mind Map Outline Skipped/Failed", description: `Could not generate mind map outline in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
+        toast({ title: "🕸️ Mind Map Syntax Skipped/Failed", description: `Could not generate mind map syntax in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
 
       if (result.error) { 
@@ -397,9 +394,9 @@ export default function EduTubePage() {
             <KeyTakeawaysDisplay takeaways={keyTakeaways} />
           </div>
         )}
-         {mindMapOutline && !isLoading && (
+         {mindMapMermaidSyntax && !isLoading && (
           <div className={animationClasses}>
-            <MindMapDisplay outline={mindMapOutline} />
+            <MindMapDisplay mermaidSyntax={mindMapMermaidSyntax} />
           </div>
         )}
         {flashcards && !isLoading && (

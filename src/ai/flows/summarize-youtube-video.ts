@@ -54,23 +54,18 @@ Please summarize the following YouTube video transcript.
 
 Output Language: Generate the summary in {{{targetLanguage}}}.
 
-Summary Style/Length:
-{{#if (eq summaryStyle "short")}}
-Provide a very brief, concise summary (1-2 paragraphs).
-{{else if (eq summaryStyle "detailed")}}
-Provide a detailed and comprehensive summary, covering all main topics and key arguments.
-{{else if (eq summaryStyle "eli5")}}
-Explain the main concepts from the transcript as if you were explaining them to a 5-year-old. Use very simple language and analogies if possible.
-{{else if (eq summaryStyle "academic")}}
-Provide a formal, academic-style summary. Use precise terminology and maintain an objective tone.
-{{else}}
-Provide a medium-length summary (3-4 paragraphs), focusing on the key points and main topics.
-{{/if}}
+Summary Style/Length: The user has requested a '{{{summaryStyle}}}' summary. Interpret this style as follows:
+- If 'short': Provide a very brief, concise summary (1-2 paragraphs).
+- If 'medium': Provide a medium-length summary (3-4 paragraphs), focusing on the key points and main topics.
+- If 'detailed': Provide a detailed and comprehensive summary, covering all main topics and key arguments.
+- If 'eli5': Explain the main concepts from the transcript as if you were explaining them to a 5-year-old. Use very simple language and analogies if possible.
+- If 'academic': Provide a formal, academic-style summary. Use precise terminology and maintain an objective tone.
+If the provided '{{{summaryStyle}}}' does not exactly match one of the above, default to the 'medium' style interpretation.
 
 Video Transcript:
 {{{videoTranscript}}}
 
-Generate the summary in {{{targetLanguage}}} based on the specified style.`,
+Generate the summary in {{{targetLanguage}}} based on the specified style: '{{{summaryStyle}}}'.`,
 });
 
 const summarizeYouTubeVideoFlow = ai.defineFlow(
@@ -81,8 +76,8 @@ const summarizeYouTubeVideoFlow = ai.defineFlow(
   },
   async (input) => {
     const {output} = await youtubeSummaryPrompt(input);
-    if (!output) {
-      throw new Error('Failed to generate summary from transcript.');
+    if (!output || !output.summary.trim()) { // Also check if summary is empty
+      throw new Error('Failed to generate summary from transcript, or the summary was empty.');
     }
     return output;
   }

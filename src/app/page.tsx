@@ -12,14 +12,24 @@ import { QuestionAnswerSection } from "@/components/edutube/QuestionAnswerSectio
 import { ChapterDisplay } from "@/components/edutube/ChapterDisplay";
 import { QuizDisplay } from "@/components/edutube/QuizDisplay"; 
 import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
-import { EmbeddedVideoPlayer } from "@/components/edutube/EmbeddedVideoPlayer"; // New component
+import { EmbeddedVideoPlayer } from "@/components/edutube/EmbeddedVideoPlayer";
 import { processVideoUrl, createFlashcardsFromSummary, type ProcessedVideoData, generateAdvancedQuiz } from "./actions"; 
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"; 
-import { AlertTriangle, Sparkles, BookCheck } from "lucide-react"; 
-import { getYouTubeVideoId } from "@/lib/youtube-utils"; // YouTube ID utility
+import { AlertTriangle, Sparkles, BookCheck, LogIn, LogOut, UserCircle, Settings } from "lucide-react"; 
+import { getYouTubeVideoId } from "@/lib/youtube-utils";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { LoginDialog } from "@/components/auth/LoginDialog"; // Import LoginDialog
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Flashcard {
   question: string;
@@ -42,10 +52,13 @@ export default function EduTubePage() {
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
 
-  const getYouTubeVideoTitleFromUrl = (url: string): string => { // Renamed for clarity
+  const { currentUser, logout, loading: authLoading } = useAuth(); // Get auth state
+  const [isLoginDialogOpen, setIsLoginDialogOpen] = React.useState(false);
+
+  const getYouTubeVideoTitleFromUrl = (url: string): string => {
     try {
       const videoId = getYouTubeVideoId(url);
-      return videoId ? `Video (${videoId})` : "YouTube Video"; // Use videoId in title
+      return videoId ? `Video (${videoId})` : "YouTube Video";
     } catch (e) {
       // Invalid URL
     }
@@ -67,7 +80,7 @@ export default function EduTubePage() {
     
     const extractedVideoId = getYouTubeVideoId(submittedVideoUrl);
     setCurrentVideoId(extractedVideoId);
-    setPlayerTimestamp(undefined); // Reset player timestamp
+    setPlayerTimestamp(undefined); 
 
     toast({
       title: "🚀 Processing Video...",
@@ -87,7 +100,7 @@ export default function EduTubePage() {
       setFlashcards(null);
       setNotes(null);
       setChapters(null);
-      setCurrentVideoId(null); // Clear videoId on error
+      setCurrentVideoId(null); 
     } else {
       setSummary(result.summary);
       toast({
@@ -144,7 +157,7 @@ export default function EduTubePage() {
     
     if (result.error) {
         setError(prevError => prevError ? `${prevError} Additionally: ${result.error}` : result.error);
-        if (!result.summary) setCurrentVideoId(null); // Clear videoId if summary failed significantly
+        if (!result.summary) setCurrentVideoId(null); 
     }
 
     setIsLoading(false);
@@ -228,26 +241,66 @@ export default function EduTubePage() {
 
   const handleChapterClick = (timeInSeconds: number) => {
     setPlayerTimestamp(timeInSeconds);
-    // Scroll to player if needed
     const playerElement = document.getElementById("embedded-video-player-card");
     if (playerElement) {
       playerElement.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    toast({ title: "Logged Out", description: "You have been successfully logged out." });
+  };
+
   const animationClasses = "animate-in fade-in-0 slide-in-from-top-5 duration-700 ease-out";
 
   return (
     <div className="container mx-auto min-h-screen p-4 py-8 md:p-10 font-sans">
-      <header className="mb-12 text-center">
-        <h1 className="text-5xl md:text-6xl font-extrabold text-primary flex items-center justify-center">
-          <Sparkles className="mr-3 h-10 w-10 md:h-12 md:w-12 text-accent" />
-          EduTube AI
-        </h1>
-        <p className="mt-3 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+      <header className="mb-10">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center">
+            <Sparkles className="mr-3 h-10 w-10 md:h-12 md:w-12 text-accent" />
+            <h1 className="text-4xl md:text-5xl font-extrabold text-primary">
+              EduTube AI
+            </h1>
+          </div>
+          <div className="flex items-center space-x-3">
+            {authLoading ? (
+              <LoadingSpinner size={24} />
+            ) : currentUser ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="rounded-full p-2 h-10 w-10 sm:w-auto sm:px-4">
+                    <UserCircle className="h-5 w-5" />
+                    <span className="hidden sm:ml-2 sm:inline">{currentUser.email?.split('@')[0]}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem disabled>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings (Soon)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="outline" onClick={() => setIsLoginDialogOpen(true)}>
+                <LogIn className="mr-2 h-5 w-5" /> Login / Sign Up
+              </Button>
+            )}
+          </div>
+        </div>
+        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl text-center mx-auto">
           Unlock knowledge faster. Summarize YouTube videos, generate flashcards, detailed notes, chapters, quizzes, and ask questions with AI.
         </p>
       </header>
+      
+      <LoginDialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen} />
 
       <main className="max-w-3xl mx-auto">
         <div className="mb-10 p-6 bg-card shadow-xl rounded-lg">

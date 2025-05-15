@@ -5,7 +5,8 @@
 
 ![preview](./public/preview.png)
 
-[![License: CC BY-SA 4.0]([https://img.shields.io/badge/License-MIT-yellow.svg](https://camo.githubusercontent.com/8893a5ee2d7f73909733da3e88ef024aab2bb1fce0ada8155499b8db59b4d148/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f4c6963656e73652d434325323042592d2d5341253230342e302d6c69676874677265792e737667))](LICENSE.md)
+[![License: CC BY-SA 4.0]([https://camo.githubusercontent.com/8893a5ee2d7f73909733da3e88ef024aab2bb1fce0ada8155499b8db59b4d148/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f4c6963656e73652d434325323042592d2d5341253230342e302d6c69676874677265792e737667](
+))](LICENSE.md)
 **EduTube AI** is a cutting-edge web application that turns any YouTube video into a dynamic, multilingual learning experience. Built with **Next.js**, **Genkit**, and **ShadCN UI**, it enables learners to generate AI-powered summaries, notes, flashcards, chapter breakdowns, quizzes, and more — instantly.
 
 🔗 **Live Demo:** [s]

@@ -18,7 +18,7 @@ Full license text: https://creativecommons.org/licenses/by-nc/4.0/
 
 ---
 
-Copyright (c) 2025 [Your Name]
+Copyright (c) 2025 [Shrijan Paudel]
 
 Please credit the original project and repository:
 

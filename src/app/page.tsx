@@ -6,6 +6,7 @@ import type { SummaryStyle } from "@/ai/flows/summarize-youtube-video";
 import type { Chapter } from "@/ai/flows/generate-chapters";
 import type { GenerateQuizOutput } from "@/ai/flows/generate-quiz"; 
 import type { GenerateExamOutput } from "@/ai/flows/generate-exam"; 
+import type { MindMapNode } from "@/ai/flows/generate-mindmap-outline"; 
 
 import { UrlInputForm } from "@/components/edutube/UrlInputForm";
 import { SummaryDisplay } from "@/components/edutube/SummaryDisplay";
@@ -37,7 +38,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input"; 
-import { AlertTriangle, Sparkles, BookCheck, Languages, Settings2, MessageSquareMore, Network, ListChecks, BookOpenCheck, FileSignature, Brain } from "lucide-react"; 
+import { AlertTriangle, Sparkles, BookCheck, Languages, Settings2, MessageSquareMore, Network, ListChecks, BookOpenCheck, FileSignature } from "lucide-react"; 
 import { getYouTubeVideoId } from "@/lib/youtube-utils";
 
 interface Flashcard {
@@ -78,7 +79,7 @@ export default function EduTubePage() {
   const [chapters, setChapters] = React.useState<Chapter[] | null>(null);
   const [keyTakeaways, setKeyTakeaways] = React.useState<string[] | null>(null);
   const [furtherStudyPrompts, setFurtherStudyPrompts] = React.useState<string[] | null>(null);
-  const [mindMapMermaidSyntax, setMindMapMermaidSyntax] = React.useState<string | null>(null);
+  const [mindMapData, setMindMapData] = React.useState<MindMapNode | null>(null); 
   
   const [isLoading, setIsLoading] = React.useState(false);
   const [loadingStep, setLoadingStep] = React.useState<string>("");
@@ -114,7 +115,7 @@ export default function EduTubePage() {
     setChapters(null);
     setKeyTakeaways(null);
     setFurtherStudyPrompts(null);
-    setMindMapMermaidSyntax(null);
+    setMindMapData(null); 
     setGeneratedQuizData(null);
     setGeneratedExamData(null); 
     setCurrentVideoId(null);
@@ -188,12 +189,13 @@ export default function EduTubePage() {
         toast({ title: "🤔 Further Study Prompts Skipped/Failed", description: `Could not generate further study prompts in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
       
-      if (result.mindMapOutline) { // This is now Mermaid syntax
-        setMindMapMermaidSyntax(result.mindMapOutline);
-        toast({ title: "🗺️ Mind Map Syntax Created!", description: `Mermaid syntax for mind map in ${selectedLanguage} ready.`, className: "bg-accent text-accent-foreground" });
-      } else if (result.summary) {
-        toast({ title: "🕸️ Mind Map Syntax Skipped/Failed", description: `Could not generate mind map syntax in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
+      if (result.mindMapData) { 
+        setMindMapData(result.mindMapData); 
+        toast({ title: "🗺️ Mind Map Data Created!", description: `Hierarchical data for mind map in ${selectedLanguage} ready.`, className: "bg-accent text-accent-foreground" });
+      } else if (result.summary) { // Only show failure if summary was there but mindmap failed
+        toast({ title: "🕸️ Mind Map Data Skipped/Failed", description: `Could not generate mind map data in ${selectedLanguage}. Ensure AI output is valid JSON.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
+
 
       if (result.error) { 
         setError(prevError => prevError ? `${prevError} Additionally: ${result.error}` : result.error);
@@ -394,9 +396,9 @@ export default function EduTubePage() {
             <KeyTakeawaysDisplay takeaways={keyTakeaways} />
           </div>
         )}
-         {mindMapMermaidSyntax && !isLoading && (
+         {mindMapData && !isLoading && ( 
           <div className={animationClasses}>
-            <MindMapDisplay mermaidSyntax={mindMapMermaidSyntax} />
+            <MindMapDisplay mindMapData={mindMapData} targetLanguage={selectedLanguage} />
           </div>
         )}
         {flashcards && !isLoading && (

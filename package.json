@@ -44,7 +44,6 @@
     "genkit": "^1.8.0",
     "jspdf": "^2.5.1",
     "lucide-react": "^0.475.0",
-    "mermaid": "10.9.0",
     "next": "15.2.3",
     "patch-package": "^8.0.0",
     "react": "^18.3.1",

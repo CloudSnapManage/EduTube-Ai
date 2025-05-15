@@ -12,7 +12,6 @@ import { generateChapters, type GenerateChaptersInput, type GenerateChaptersOutp
 import { generateAdvancedQuizAction, type GenerateQuizInput, type GenerateQuizOutput } from "@/ai/flows/generate-quiz";
 import { generateKeyTakeaways, type GenerateKeyTakeawaysInput, type GenerateKeyTakeawaysOutput } from "@/ai/flows/generate-key-takeaways";
 import { generateFurtherStudyPrompts, type GenerateFurtherStudyInput, type GenerateFurtherStudyOutput } from "@/ai/flows/generate-further-study";
-import { generateMindMapOutline, type GenerateMindMapOutlineInput, type GenerateMindMapOutlineOutput, type MindMapNode } from "@/ai/flows/generate-mindmap-outline";
 import { generateExam, type GenerateExamInput, type GenerateExamOutput } from "@/ai/flows/generate-exam";
 
 
@@ -24,7 +23,6 @@ export interface ProcessedVideoData {
   chapters: Chapter[] | null;
   keyTakeaways: string[] | null;
   furtherStudyPrompts: string[] | null;
-  mindMapData: MindMapNode | null; 
   error?: string | null; 
 }
 
@@ -39,7 +37,6 @@ export async function processVideoUrl(
   let chapters: Chapter[] | null = null;
   let keyTakeaways: string[] | null = null;
   let furtherStudyPrompts: string[] | null = null;
-  let mindMapData: MindMapNode | null = null; 
   let rawTranscriptResult: TranscriptResponse[] | null = null; 
   let accumulatedError: string | null = null;
 
@@ -49,7 +46,7 @@ export async function processVideoUrl(
     rawTranscriptResult = await getYouTubeTranscript(videoUrl);
 
     if (!rawTranscriptResult || rawTranscriptResult.length === 0) {
-      return { videoUrl, summary, flashcards, notes, chapters, keyTakeaways, furtherStudyPrompts, mindMapData, error: "Could not retrieve transcript for the video. It might be unavailable or have transcripts disabled." };
+      return { videoUrl, summary, flashcards, notes, chapters, keyTakeaways, furtherStudyPrompts, error: "Could not retrieve transcript for the video. It might be unavailable or have transcripts disabled." };
     }
 
     try {
@@ -69,7 +66,6 @@ export async function processVideoUrl(
         generateNotes({ videoSummary: summary, ...commonInput }),
         generateKeyTakeaways({ videoSummary: summary, ...commonInput }),
         generateFurtherStudyPrompts({ videoSummary: summary, ...commonInput }),
-        // Mind map is handled after chapters and summary
       ]);
 
       if (results[0].status === 'fulfilled') flashcards = (results[0].value as GenerateFlashcardsOutput).flashcards;
@@ -96,28 +92,16 @@ export async function processVideoUrl(
       const chaptersResult: GenerateChaptersOutput = await generateChapters(chaptersInput);
       chapters = chaptersResult.chapters;
 
-      if (summary) { // Ensure summary exists before generating mind map
-          try {
-            const mindMapInput: GenerateMindMapOutlineInput = { videoSummary: summary, chapters: chapters || [], ...commonInput };
-            const mindMapResult = await generateMindMapOutline(mindMapInput);
-            mindMapData = mindMapResult.mindMapData;
-          } catch (e: any) {
-            console.error("Error generating mind map data:", e);
-            accumulatedError = (accumulatedError ? accumulatedError + " " : "") + "Failed to generate mind map data.";
-          }
-      }
-
-
     } catch (e: any) {
       console.error("Error generating chapters:", e);
       accumulatedError = (accumulatedError ? accumulatedError + " " : "") + "Failed to generate chapters.";
     }
 
-    return { videoUrl, summary, flashcards, notes, chapters, keyTakeaways, furtherStudyPrompts, mindMapData, error: accumulatedError };
+    return { videoUrl, summary, flashcards, notes, chapters, keyTakeaways, furtherStudyPrompts, error: accumulatedError };
 
   } catch (error: any) {
     console.error("Error processing video URL:", error);
-    return { videoUrl, summary, flashcards, notes, chapters, keyTakeaways, furtherStudyPrompts, mindMapData, error: error.message || "An unexpected error occurred during video processing." };
+    return { videoUrl, summary, flashcards, notes, chapters, keyTakeaways, furtherStudyPrompts, error: error.message || "An unexpected error occurred during video processing." };
   }
 }
 

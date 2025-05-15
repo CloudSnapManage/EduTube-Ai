@@ -10,6 +10,5 @@ import '@/ai/flows/generate-chapters.ts';
 import '@/ai/flows/generate-quiz.ts';
 import '@/ai/flows/generate-key-takeaways.ts'; 
 import '@/ai/flows/generate-further-study.ts'; 
-import '@/ai/flows/generate-mindmap-outline.ts'; 
-import '@/ai/flows/generate-exam.ts'; // New
+import '@/ai/flows/generate-exam.ts'; 
     

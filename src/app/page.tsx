@@ -6,7 +6,6 @@ import type { SummaryStyle } from "@/ai/flows/summarize-youtube-video";
 import type { Chapter } from "@/ai/flows/generate-chapters";
 import type { GenerateQuizOutput } from "@/ai/flows/generate-quiz"; 
 import type { GenerateExamOutput } from "@/ai/flows/generate-exam"; 
-import type { MindMapNode } from "@/ai/flows/generate-mindmap-outline"; 
 
 import { UrlInputForm } from "@/components/edutube/UrlInputForm";
 import { SummaryDisplay } from "@/components/edutube/SummaryDisplay";
@@ -17,7 +16,6 @@ import { ChapterDisplay } from "@/components/edutube/ChapterDisplay";
 import { QuizDisplay } from "@/components/edutube/QuizDisplay"; 
 import { KeyTakeawaysDisplay } from "@/components/edutube/KeyTakeawaysDisplay";
 import { FurtherStudyDisplay } from "@/components/edutube/FurtherStudyDisplay";
-import { MindMapDisplay } from "@/components/edutube/MindMapDisplay";
 import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
 import { EmbeddedVideoPlayer } from "@/components/edutube/EmbeddedVideoPlayer";
 import { ExamDisplay } from "@/components/edutube/ExamDisplay"; 
@@ -79,7 +77,6 @@ export default function EduTubePage() {
   const [chapters, setChapters] = React.useState<Chapter[] | null>(null);
   const [keyTakeaways, setKeyTakeaways] = React.useState<string[] | null>(null);
   const [furtherStudyPrompts, setFurtherStudyPrompts] = React.useState<string[] | null>(null);
-  const [mindMapData, setMindMapData] = React.useState<MindMapNode | null>(null); 
   
   const [isLoading, setIsLoading] = React.useState(false);
   const [loadingStep, setLoadingStep] = React.useState<string>("");
@@ -115,7 +112,6 @@ export default function EduTubePage() {
     setChapters(null);
     setKeyTakeaways(null);
     setFurtherStudyPrompts(null);
-    setMindMapData(null); 
     setGeneratedQuizData(null);
     setGeneratedExamData(null); 
     setCurrentVideoId(null);
@@ -189,14 +185,6 @@ export default function EduTubePage() {
         toast({ title: "🤔 Further Study Prompts Skipped/Failed", description: `Could not generate further study prompts in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
       
-      if (result.mindMapData) { 
-        setMindMapData(result.mindMapData); 
-        toast({ title: "🗺️ Mind Map Data Created!", description: `Hierarchical data for mind map in ${selectedLanguage} ready.`, className: "bg-accent text-accent-foreground" });
-      } else if (result.summary) { // Only show failure if summary was there but mindmap failed
-        toast({ title: "🕸️ Mind Map Data Skipped/Failed", description: `Could not generate mind map data in ${selectedLanguage}. Ensure AI output is valid JSON.`, variant: "default", className: "bg-muted text-muted-foreground" });
-      }
-
-
       if (result.error) { 
         setError(prevError => prevError ? `${prevError} Additionally: ${result.error}` : result.error);
         if (!result.summary) setCurrentVideoId(null); 
@@ -396,11 +384,7 @@ export default function EduTubePage() {
             <KeyTakeawaysDisplay takeaways={keyTakeaways} />
           </div>
         )}
-         {mindMapData && !isLoading && ( 
-          <div className={animationClasses}>
-            <MindMapDisplay mindMapData={mindMapData} targetLanguage={selectedLanguage} />
-          </div>
-        )}
+        
         {flashcards && !isLoading && (
           <div className={animationClasses}>
             <FlashcardViewer 
@@ -527,3 +511,4 @@ export default function EduTubePage() {
     </div>
   );
 }
+

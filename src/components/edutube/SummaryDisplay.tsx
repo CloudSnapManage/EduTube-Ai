@@ -20,7 +20,7 @@ export function SummaryDisplay({ summary }: SummaryDisplayProps) {
   React.useEffect(() => {
     // Cleanup speech synthesis on component unmount or when summary changes
     return () => {
-      if (window.speechSynthesis.speaking) {
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
       }
       setIsPlaying(false);
@@ -38,33 +38,28 @@ export function SummaryDisplay({ summary }: SummaryDisplayProps) {
     if (isPlaying && utterance) { // If playing, this button becomes "Pause"
       window.speechSynthesis.pause();
       setIsPlaying(false);
-      // toast({ title: "Speech Paused", description: "Summary reading paused."});
     } else if (!isPlaying && utterance && window.speechSynthesis.paused) { // If paused, this button becomes "Resume"
       window.speechSynthesis.resume();
       setIsPlaying(true);
-      // toast({ title: "Speech Resumed", description: "Summary reading resumed."});
     } else { // Start new speech
       if (window.speechSynthesis.speaking) { // Stop any current speech before starting new
         window.speechSynthesis.cancel();
       }
       
       const newUtterance = new SpeechSynthesisUtterance(summary);
-      // Optionally set language, voice, rate, pitch here
-      // e.g. newUtterance.lang = "en-US";
       newUtterance.onstart = () => {
         setIsPlaying(true);
-        // toast({ title: "Reading Summary...", description: "AI is reading the summary aloud."});
       };
       newUtterance.onend = () => {
         setIsPlaying(false);
         setUtterance(null);
-        // toast({ title: "Finished Reading", description: "Summary reading complete."});
       };
       newUtterance.onerror = (event) => {
-        console.error("SpeechSynthesisUtterance.onerror", event);
+        console.error("SpeechSynthesisUtterance.onerror event object:", event);
+        const errorMessage = typeof event.error === 'string' ? event.error : "An unknown speech error occurred.";
+        toast({ title: "Speech Error", description: `Could not read summary: ${errorMessage}`, variant: "destructive" });
         setIsPlaying(false);
         setUtterance(null);
-        toast({ title: "Speech Error", description: `Could not read summary: ${event.error}`, variant: "destructive" });
       };
       setUtterance(newUtterance);
       window.speechSynthesis.speak(newUtterance);
@@ -72,12 +67,11 @@ export function SummaryDisplay({ summary }: SummaryDisplayProps) {
   };
 
   const handleStopSpeech = () => {
-     if (window.speechSynthesis.speaking) {
+     if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
       }
       setIsPlaying(false);
       setUtterance(null);
-      // toast({ title: "Speech Stopped", description: "Summary reading stopped."});
   };
 
 
@@ -95,7 +89,7 @@ export function SummaryDisplay({ summary }: SummaryDisplayProps) {
             <div className="flex space-x-2">
                 <Button onClick={handleTextToSpeech} variant="outline" size="sm" disabled={!summary}>
                     {isPlaying && utterance ? <PauseCircle className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
-                    {isPlaying && utterance ? "Pause" : (utterance && window.speechSynthesis.paused ? "Resume" : "Read Aloud")}
+                    {isPlaying && utterance ? "Pause" : (utterance && window.speechSynthesis && window.speechSynthesis.paused ? "Resume" : "Read Aloud")}
                 </Button>
                 {isPlaying && utterance && (
                     <Button onClick={handleStopSpeech} variant="outline" size="sm" >

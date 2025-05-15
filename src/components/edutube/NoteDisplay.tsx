@@ -21,7 +21,7 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Notes" }: NoteDisplay
 
   React.useEffect(() => {
     return () => {
-      if (window.speechSynthesis.speaking) {
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
       }
       setIsPlaying(false);
@@ -49,9 +49,10 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Notes" }: NoteDisplay
       newUtterance.onstart = () => setIsPlaying(true);
       newUtterance.onend = () => { setIsPlaying(false); setUtterance(null); };
       newUtterance.onerror = (event) => {
-        console.error("SpeechSynthesisUtterance.onerror", event);
+        console.error("SpeechSynthesisUtterance.onerror event object:", event);
+        const errorMessage = typeof event.error === 'string' ? event.error : "An unknown speech error occurred.";
+        toast({ title: "Speech Error", description: `Could not read notes: ${errorMessage}`, variant: "destructive" });
         setIsPlaying(false); setUtterance(null);
-        toast({ title: "Speech Error", description: `Could not read notes: ${event.error}`, variant: "destructive" });
       };
       setUtterance(newUtterance);
       window.speechSynthesis.speak(newUtterance);
@@ -59,7 +60,7 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Notes" }: NoteDisplay
   };
 
   const handleStopSpeech = () => {
-    if (window.speechSynthesis.speaking) {
+    if (window.speechSynthesis && window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel();
     }
     setIsPlaying(false);
@@ -97,12 +98,12 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Notes" }: NoteDisplay
     const splitNotes = doc.splitTextToSize(notes, contentWidth); 
 
     splitNotes.forEach((line: string) => {
-      if (yPosition > pageHeight - margin) {
+      if (yPosition > pageHeight - margin - 10) { // Add some bottom margin before adding new page
         doc.addPage();
         yPosition = margin; 
         doc.setFontSize(9);
         doc.setTextColor(150, 150, 150);
-        doc.text(`Page ${doc.getNumberOfPages()}`, pageWidth - margin, margin - 5, { align: 'right' });
+        doc.text(`Page ${doc.internal.pages.length > 1 ? doc.getPageNumber() : ''}`, pageWidth - margin, margin - 5, { align: 'right' }); // Using getPageNumber()
         doc.setTextColor(60, 60, 60);
         doc.setFontSize(11);
       }
@@ -128,7 +129,7 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Notes" }: NoteDisplay
           <div className="flex space-x-2">
             <Button onClick={handleTextToSpeech} variant="outline" size="sm" disabled={!notes}>
               {isPlaying && utterance ? <PauseCircle className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
-              {isPlaying && utterance ? "Pause" : (utterance && window.speechSynthesis.paused ? "Resume" : "Read Notes")}
+              {isPlaying && utterance ? "Pause" : (utterance && window.speechSynthesis && window.speechSynthesis.paused ? "Resume" : "Read Notes")}
             </Button>
             {isPlaying && utterance && (
                 <Button onClick={handleStopSpeech} variant="outline" size="sm" >

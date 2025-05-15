@@ -9,7 +9,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyCbIrhL7VAQiY5iCLvvYkU0b4P30mQKgpk",
   authDomain: "edutube-ai-6ebnb.firebaseapp.com",
   projectId: "edutube-ai-6ebnb",
-  storageBucket: "edutube-ai-6ebnb.appspot.com", // Corrected from .firebasestorage.app to .appspot.com
+  storageBucket: "edutube-ai-6ebnb.firebasestorage.app", // Updated to user-provided value
   messagingSenderId: "803448006113",
   appId: "1:803448006113:web:b738cb3a1f2c52e3ff9ea0"
   // measurementId is optional and was not provided, so it's omitted.
@@ -28,3 +28,4 @@ const auth = getAuth(app);
 // const storage = getStorage(app);
 
 export { app, auth /*, db, storage */ };
+

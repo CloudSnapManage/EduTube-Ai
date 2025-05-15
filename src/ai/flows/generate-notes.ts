@@ -16,11 +16,12 @@ const GenerateNotesInputSchema = z.object({
   videoSummary: z
     .string()
     .describe('A summary of the video content to generate notes from.'),
+  targetLanguage: z.string().optional().default("English").describe("The language in which the notes should be generated."),
 });
 export type GenerateNotesInput = z.infer<typeof GenerateNotesInputSchema>;
 
 const GenerateNotesOutputSchema = z.object({
-  notes: z.string().describe('Detailed, comprehensive, and well-explained notes derived from the video summary, suitable for in-depth study. The notes should elaborate on key concepts, provide examples if applicable from the summary, and offer thorough explanations of the main ideas and arguments presented.'),
+  notes: z.string().describe('Detailed, comprehensive, and well-explained notes derived from the video summary, suitable for in-depth study, in the specified language. The notes should elaborate on key concepts, provide examples if applicable from the summary, and offer thorough explanations of the main ideas and arguments presented.'),
 });
 export type GenerateNotesOutput = z.infer<typeof GenerateNotesOutputSchema>;
 
@@ -33,6 +34,7 @@ const generateNotesPrompt = ai.definePrompt({
   input: {schema: GenerateNotesInputSchema},
   output: {schema: GenerateNotesOutputSchema},
   prompt: `You are an expert academic assistant. Your task is to transform the following video summary into detailed, comprehensive, and well-explained notes suitable for in-depth study.
+The notes should be generated in {{{targetLanguage}}}.
 
 Focus on:
 - Elaborating on key concepts and definitions with clear explanations.
@@ -42,10 +44,10 @@ Focus on:
 
 Use paragraphs, bullet points, or numbered lists where appropriate to present the information clearly. The notes should be significantly more detailed than a brief summary.
 
-Video Summary:
+Video Summary (this summary is already in {{{targetLanguage}}} or should be treated as such for note generation):
 {{{videoSummary}}}
 
-Generate the detailed notes based on this summary.
+Generate the detailed notes in {{{targetLanguage}}} based on this summary.
 `,
 });
 
@@ -60,3 +62,4 @@ const generateNotesFlow = ai.defineFlow(
     return output!;
   }
 );
+

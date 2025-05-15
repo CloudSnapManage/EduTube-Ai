@@ -22,11 +22,12 @@ const GenerateChaptersInputSchema = z.object({
   transcriptSegments: z
     .array(TranscriptSegmentSchema)
     .describe('An array of transcript segments, each with text and its offset in milliseconds.'),
+  targetLanguage: z.string().optional().default("English").describe("The preferred language for chapter titles. The AI will attempt to generate titles in this language if feasible based on the transcript's primary language."),
 });
 export type GenerateChaptersInput = z.infer<typeof GenerateChaptersInputSchema>;
 
 const ChapterSchema = z.object({
-  title: z.string().describe('A concise and descriptive title for the chapter.'),
+  title: z.string().describe('A concise and descriptive title for the chapter, ideally in the target language.'),
   startTimeSeconds: z.number().int().nonnegative().describe('The start time of the chapter in whole seconds from the beginning of the video.'),
 });
 export type Chapter = z.infer<typeof ChapterSchema>;
@@ -47,7 +48,7 @@ const generateChaptersPrompt = ai.definePrompt({
   prompt: `You are an expert at analyzing video transcripts to identify distinct chapters or thematic sections.
 Given the following transcript segments, each with its text and start time offset in milliseconds, your task is to:
 1. Identify logical breaks in the content to define chapters. Aim for meaningful sections that cover distinct topics or stages in the video.
-2. For each chapter, provide a concise and descriptive title (e.g., "Introduction to Photosynthesis", "Step 1: Mixing Ingredients", "Understanding Quantum Entanglement").
+2. For each chapter, provide a concise and descriptive title. Please attempt to generate these titles in '{{{targetLanguage}}}'. If the transcript is in a different language and translation is difficult, use the transcript's primary language for titles.
 3. For each chapter, determine its start time in SECONDS. This should be the offset of the *first* transcript segment that belongs to that chapter. Convert this offset from milliseconds to seconds by dividing by 1000 and rounding to the nearest whole number.
 4. Aim for a reasonable number of chapters, typically between 5 and 15, depending on the transcript's length and content diversity. Ensure chapter titles are distinct.
 
@@ -56,7 +57,7 @@ Transcript segments:
 - Text: "{{this.text}}" (Starts at: {{this.offset}}ms)
 {{/each}}
 
-Return your response as a list of chapter objects, where each object contains a 'title' and 'startTimeSeconds'.
+Return your response as a list of chapter objects, where each object contains a 'title' (in '{{{targetLanguage}}}' if possible) and 'startTimeSeconds'.
 Example chapter object: { "title": "Key Concept Explanation", "startTimeSeconds": 123 }
 `,
 });
@@ -72,12 +73,10 @@ const generateChaptersFlow = ai.defineFlow(
     if (!input.transcriptSegments || input.transcriptSegments.length === 0) {
       return { chapters: [] };
     }
-    // Cap the number of segments to avoid overly long prompts, e.g., first 500 segments
-    // This is a practical limit; adjust as needed.
     const MAX_SEGMENTS = 700; 
     const truncatedSegments = input.transcriptSegments.slice(0, MAX_SEGMENTS);
 
-    const {output} = await generateChaptersPrompt({ transcriptSegments: truncatedSegments });
+    const {output} = await generateChaptersPrompt({ transcriptSegments: truncatedSegments, targetLanguage: input.targetLanguage });
     if (!output) {
         throw new Error('Failed to generate chapters from transcript.');
     }
@@ -86,3 +85,4 @@ const generateChaptersFlow = ai.defineFlow(
     return output;
   }
 );
+

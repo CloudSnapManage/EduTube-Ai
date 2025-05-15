@@ -5,8 +5,9 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { StickyNote, Download } from "lucide-react";
+import { StickyNote, Download, Volume2, PauseCircle, StopCircle } from "lucide-react";
 import jsPDF from "jspdf";
+import { useToast } from "@/hooks/use-toast";
 
 interface NoteDisplayProps {
   notes: string;
@@ -14,6 +15,56 @@ interface NoteDisplayProps {
 }
 
 export function NoteDisplay({ notes, videoTitle = "EduTube Notes" }: NoteDisplayProps) {
+  const [isPlaying, setIsPlaying] = React.useState(false);
+  const [utterance, setUtterance] = React.useState<SpeechSynthesisUtterance | null>(null);
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    return () => {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
+      setIsPlaying(false);
+    };
+  }, [notes]);
+
+  const handleTextToSpeech = () => {
+    if (!notes) return;
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      toast({ title: "Text-to-Speech Error", description: "Your browser does not support speech synthesis.", variant: "destructive" });
+      return;
+    }
+
+    if (isPlaying && utterance) {
+      window.speechSynthesis.pause();
+      setIsPlaying(false);
+    } else if (!isPlaying && utterance && window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+      setIsPlaying(true);
+    } else {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
+      const newUtterance = new SpeechSynthesisUtterance(notes);
+      newUtterance.onstart = () => setIsPlaying(true);
+      newUtterance.onend = () => { setIsPlaying(false); setUtterance(null); };
+      newUtterance.onerror = (event) => {
+        console.error("SpeechSynthesisUtterance.onerror", event);
+        setIsPlaying(false); setUtterance(null);
+        toast({ title: "Speech Error", description: `Could not read notes: ${event.error}`, variant: "destructive" });
+      };
+      setUtterance(newUtterance);
+      window.speechSynthesis.speak(newUtterance);
+    }
+  };
+
+  const handleStopSpeech = () => {
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
+    setUtterance(null);
+  };
 
   const handleDownloadPdf = () => {
     const doc = new jsPDF({
@@ -33,26 +84,22 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Notes" }: NoteDisplay
     const pageWidth = doc.internal.pageSize.width;
     const margin = 15; // mm
     const contentWidth = pageWidth - (margin * 2);
-    let yPosition = margin + 10; // Start position for text, with space for title
+    let yPosition = margin + 10; 
 
-    // Add title to PDF
     doc.setFontSize(18);
-    doc.setTextColor(40, 40, 40); // Dark gray
+    doc.setTextColor(40, 40, 40);
     const titleLines = doc.splitTextToSize(`${videoTitle} - Detailed Notes`, contentWidth);
     doc.text(titleLines, margin, yPosition);
-    yPosition += (titleLines.length * 7) + 10; // Adjust space after title
+    yPosition += (titleLines.length * 7) + 10;
 
-    // Add notes content
     doc.setFontSize(11);
-    doc.setTextColor(60, 60, 60); // Slightly lighter gray for content
-    
+    doc.setTextColor(60, 60, 60); 
     const splitNotes = doc.splitTextToSize(notes, contentWidth); 
 
     splitNotes.forEach((line: string) => {
-      if (yPosition > pageHeight - margin) { // Check if new page is needed
+      if (yPosition > pageHeight - margin) {
         doc.addPage();
-        yPosition = margin; // Reset Y for new page
-        // Optionally add header to subsequent pages
+        yPosition = margin; 
         doc.setFontSize(9);
         doc.setTextColor(150, 150, 150);
         doc.text(`Page ${doc.getNumberOfPages()}`, pageWidth - margin, margin - 5, { align: 'right' });
@@ -60,7 +107,7 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Notes" }: NoteDisplay
         doc.setFontSize(11);
       }
       doc.text(line, margin, yPosition);
-      yPosition += 6; // Line height for 11pt font
+      yPosition += 6; 
     });
     
     const safeVideoTitle = videoTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
@@ -78,15 +125,26 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Notes" }: NoteDisplay
             </CardTitle>
             <CardDescription className="text-base">Key points structured for in-depth study and easy revision.</CardDescription>
           </div>
-          <Button onClick={handleDownloadPdf} variant="outline" size="sm" className="whitespace-nowrap">
-            <Download className="mr-2 h-4 w-4" />
-            Download PDF
-          </Button>
+          <div className="flex space-x-2">
+            <Button onClick={handleTextToSpeech} variant="outline" size="sm" disabled={!notes}>
+              {isPlaying && utterance ? <PauseCircle className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
+              {isPlaying && utterance ? "Pause" : (utterance && window.speechSynthesis.paused ? "Resume" : "Read Notes")}
+            </Button>
+            {isPlaying && utterance && (
+                <Button onClick={handleStopSpeech} variant="outline" size="sm" >
+                    <StopCircle className="mr-2 h-4 w-4" />
+                    Stop
+                </Button>
+            )}
+            <Button onClick={handleDownloadPdf} variant="outline" size="sm" className="whitespace-nowrap" disabled={!notes}>
+              <Download className="mr-2 h-4 w-4" />
+              Download PDF
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-6">
         <ScrollArea className="h-96 w-full rounded-md border p-4 bg-background">
-          {/* Using a div with prose for better markdown-like text rendering if notes contain it */}
           <div className="prose prose-sm max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 dark:prose-invert">
              <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans">{notes}</pre>
           </div>

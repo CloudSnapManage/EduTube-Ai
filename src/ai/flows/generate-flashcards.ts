@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -15,6 +16,7 @@ const GenerateFlashcardsInputSchema = z.object({
   videoSummary: z
     .string()
     .describe('A summary of the video content to generate flashcards from.'),
+  targetLanguage: z.string().optional().default("English").describe("The language for the flashcards."),
 });
 export type GenerateFlashcardsInput = z.infer<typeof GenerateFlashcardsInputSchema>;
 
@@ -24,7 +26,7 @@ const GenerateFlashcardsOutputSchema = z.object({
       question: z.string().describe('The question on the flashcard.'),
       answer: z.string().describe('The answer to the question on the flashcard.'),
     })
-  ).describe('A list of flashcards generated from the video summary.'),
+  ).describe('A list of flashcards generated from the video summary, in the specified language.'),
 });
 export type GenerateFlashcardsOutput = z.infer<typeof GenerateFlashcardsOutputSchema>;
 
@@ -37,10 +39,13 @@ const generateFlashcardsPrompt = ai.definePrompt({
   input: {schema: GenerateFlashcardsInputSchema},
   output: {schema: GenerateFlashcardsOutputSchema},
   prompt: `You are an expert educator. Generate a *fresh and distinct* set of flashcards from the following video summary.
+The flashcards (both questions and answers) should be in {{{targetLanguage}}}.
 
-Video Summary: {{{videoSummary}}}
+Video Summary (this summary is already in {{{targetLanguage}}} or should be treated as such for flashcard generation):
+{{{videoSummary}}}
 
 Each flashcard should have a question and an answer. The questions should be designed to test the user's understanding of the material. Aim for variety if previous sets have been generated.
+Produce the questions and answers in {{{targetLanguage}}}.
 `,
 });
 
@@ -55,3 +60,4 @@ const generateFlashcardsFlow = ai.defineFlow(
     return output!;
   }
 );
+

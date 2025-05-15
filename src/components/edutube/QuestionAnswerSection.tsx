@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertTriangle, MessageCircleQuestion, Send, RefreshCw, Sparkles } from "lucide-react";
-import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
+// Removed LoadingSpinner import as it's not used directly, Loader2 is used.
 import { askQuestionAboutSummary, type AnswerUserQuestionInput } from "@/app/actions"; 
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,6 +24,7 @@ type QuestionFormValues = z.infer<typeof questionFormSchema>;
 
 interface QuestionAnswerSectionProps {
   videoSummary: string | null;
+  targetLanguage: string; // Added to pass to the action
 }
 
 interface QAPair {
@@ -32,7 +33,7 @@ interface QAPair {
   answer: string;
 }
 
-export function QuestionAnswerSection({ videoSummary }: QuestionAnswerSectionProps) {
+export function QuestionAnswerSection({ videoSummary, targetLanguage }: QuestionAnswerSectionProps) {
   const [qaPairs, setQaPairs] = React.useState<QAPair[]>([]);
   const [isLoadingAnswer, setIsLoadingAnswer] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -59,20 +60,20 @@ export function QuestionAnswerSection({ videoSummary }: QuestionAnswerSectionPro
       answer: pair.answer,
     }));
 
-    const result = await askQuestionAboutSummary(videoSummary, data.userQuestion, conversationHistory);
+    const result = await askQuestionAboutSummary(videoSummary, data.userQuestion, targetLanguage, conversationHistory);
 
     if (result.error || !result.answer) {
       setError(result.error || "An unknown error occurred while fetching the answer.");
       toast({
         title: "😕 Error Getting Answer",
-        description: result.error || "Failed to get an answer. Please try rephrasing or ask another question.",
+        description: result.error || `Failed to get an answer in ${targetLanguage}. Please try rephrasing.`,
         variant: "destructive",
       });
     } else {
       setQaPairs(prevPairs => [...prevPairs, { id: Date.now().toString(), question: data.userQuestion, answer: result.answer! }]);
       toast({
         title: "💡 Answer Ready!",
-        description: "Your question has been answered by the AI.",
+        description: `Your question has been answered in ${targetLanguage}.`,
         className: "bg-primary text-primary-foreground",
       });
       form.reset(); 
@@ -113,7 +114,7 @@ export function QuestionAnswerSection({ videoSummary }: QuestionAnswerSectionPro
           <div className="flex-1">
             <CardTitle className="flex items-center text-2xl font-semibold">
               <MessageCircleQuestion className="mr-3 h-7 w-7 text-primary" />
-              Ask AI About The Video
+              Ask AI About The Video (in {targetLanguage})
             </CardTitle>
             <CardDescription className="text-base">Get detailed answers based on the video's summary. Context from this chat is remembered.</CardDescription>
           </div>
@@ -133,10 +134,10 @@ export function QuestionAnswerSection({ videoSummary }: QuestionAnswerSectionPro
               name="userQuestion"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-semibold text-md">Your Question:</FormLabel>
+                  <FormLabel className="font-semibold text-md">Your Question (in {targetLanguage}):</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="e.g., 'Can you explain the concept of X in more detail?' or 'What were the main arguments for Y?'"
+                      placeholder={`e.g., 'Can you explain the concept of X in more detail?' (in ${targetLanguage})`}
                       className="resize-none bg-background focus:border-primary"
                       {...field}
                       rows={4}
@@ -215,7 +216,7 @@ export function QuestionAnswerSection({ videoSummary }: QuestionAnswerSectionPro
          {qaPairs.length === 0 && !isLoadingAnswer && !error && (
           <div className="text-center py-10">
             <MessageCircleQuestion className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
-            <p className="text-muted-foreground">Ask your first question about the video summary above!</p>
+            <p className="text-muted-foreground">Ask your first question about the video summary above (in {targetLanguage})!</p>
           </div>
         )}
       </CardContent>

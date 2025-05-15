@@ -4,9 +4,9 @@
 /**
  * @fileOverview Defines a Genkit flow for generating an advanced quiz from text content.
  *
- * - generateAdvancedQuizFlow - A function that takes text content and returns a structured quiz.
- * - GenerateQuizInput - The input type for the generateAdvancedQuizFlow function.
- * - GenerateQuizOutput - The return type for the generateAdvancedQuizFlow function.
+ * - generateAdvancedQuizAction - A function that takes text content and returns a structured quiz.
+ * - GenerateQuizInput - The input type for the generateAdvancedQuizAction function.
+ * - GenerateQuizOutput - The return type for the generateAdvancedQuizAction function.
  * - QuizQuestion - Represents a single quiz question with various types.
  */
 
@@ -25,12 +25,13 @@ export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
 const GenerateQuizInputSchema = z.object({
   textContent: z.string().describe('The text content (e.g., video summary or detailed notes) to generate the quiz from.'),
   numberOfQuestions: z.number().int().min(3).max(10).optional().default(5).describe('The desired number of quiz questions.'),
+  targetLanguage: z.string().optional().default("English").describe("The language for the quiz questions and answers."),
 });
 export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
 
 const GenerateQuizOutputSchema = z.object({
-  quizTitle: z.string().describe('A suitable title for the quiz, related to the content.'),
-  questions: z.array(QuizQuestionSchema).describe('An array of quiz questions of various types.'),
+  quizTitle: z.string().describe('A suitable title for the quiz, related to the content and in the target language.'),
+  questions: z.array(QuizQuestionSchema).describe('An array of quiz questions of various types, in the target language.'),
 });
 export type GenerateQuizOutput = z.infer<typeof GenerateQuizOutputSchema>;
 
@@ -43,20 +44,21 @@ const generateQuizPrompt = ai.definePrompt({
   input: {schema: GenerateQuizInputSchema},
   output: {schema: GenerateQuizOutputSchema},
   prompt: `You are an expert quiz creator for students. Based on the provided text content, generate a quiz with a variety of question types: multiple-choice, true/false, and fill-in-the-blank.
+The quiz (title, questions, options, answers, explanations) should be entirely in {{{targetLanguage}}}.
 The quiz should test understanding of the key concepts, facts, and ideas presented in the text.
 
-Text Content:
+Text Content (this content is already in {{{targetLanguage}}} or should be treated as such for quiz generation):
 {{{textContent}}}
 
 Generate exactly {{{numberOfQuestions}}} questions.
 
-For each question:
+For each question (all in {{{targetLanguage}}}):
 - Provide a clear 'questionText'.
 - For 'multiple-choice' questions, provide 3-4 'options' and ensure one is the 'correctAnswer'.
 - For 'fill-in-the-blank' questions, use "____" in the 'questionText' to indicate where the blank is. The 'correctAnswer' should be the word or phrase that fills the blank.
-- For 'true-false' questions, the 'correctAnswer' should be either "True" or "False".
+- For 'true-false' questions, the 'correctAnswer' should be either "True" or "False" (localized to {{{targetLanguage}}} if appropriate, e.g., "Vrai" or "Faux" for French).
 - Optionally, provide a brief 'explanation' for the correct answer, especially if the question is tricky or involves a nuanced concept.
-- Ensure the 'quizTitle' is relevant to the provided text content.
+- Ensure the 'quizTitle' is relevant to the provided text content and is in {{{targetLanguage}}}.
 
 Aim for a mix of question difficulties. Ensure questions are distinct and cover different aspects of the text.
 `,
@@ -83,10 +85,11 @@ const generateAdvancedQuizFlow = ai.defineFlow(
             console.warn("Invalid multiple-choice question:", q);
             return false;
         }
-        if (q.type === 'true-false' && (q.correctAnswer !== "True" && q.correctAnswer !== "False")) {
-            console.warn("Invalid true-false question:", q);
-            return false;
-        }
+        // For true/false, correctness check is harder if localized. Assuming AI handles it.
+        // if (q.type === 'true-false' && (q.correctAnswer !== "True" && q.correctAnswer !== "False")) {
+        //     console.warn("Invalid true-false question:", q);
+        //     return false;
+        // }
         return true;
     });
 

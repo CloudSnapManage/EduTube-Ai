@@ -74,10 +74,10 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Study Notes" }: NoteD
       format: "a4"
     });
     
-    const themePrimaryColor = "#2074d4"; // A calm blue, approx HSL(207, 69%, 53%)
+    const themePrimaryColor = "#2074d4"; 
     const themeWhiteColor = "#FFFFFF";
-    const themeTextColor = "#333333"; // Dark gray
-    const themeLightGrayColor = "#f0f0f0"; // For subtle backgrounds or lines
+    const themeTextColor = "#333333"; 
+    const themeLightGrayColor = "#f0f0f0"; 
     const themeMutedTextColor = "#555555";
 
 
@@ -170,7 +170,7 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Study Notes" }: NoteD
     
     const safeVideoTitle = videoTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     doc.save(`EduTubeAI_Notes_${safeVideoTitle}.pdf`);
-    toast({ title: "🎨 Themed PDF Downloaded!", description: "Your customized notes PDF has been saved."});
+    toast({ title: "📝 PDF Downloaded!", description: "Your notes PDF has been saved."});
   };
 
   return (
@@ -182,7 +182,7 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Study Notes" }: NoteD
               <StickyNote className="mr-3 h-7 w-7 text-primary" />
               Detailed Revision Notes
             </CardTitle>
-            <CardDescription className="text-base">Key points structured for in-depth study. Export as a themed PDF!</CardDescription>
+            <CardDescription className="text-base">Key points structured for in-depth study. Export as PDF!</CardDescription>
           </div>
           <div className="flex space-x-2">
             <Button onClick={handleTextToSpeech} variant="outline" size="sm" disabled={!notes}>
@@ -197,7 +197,7 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Study Notes" }: NoteD
             )}
             <Button onClick={handleDownloadPdf} variant="outline" size="sm" className="whitespace-nowrap" disabled={!notes}>
               <Download className="mr-2 h-4 w-4" />
-              Download Themed PDF
+              Download Notes
             </Button>
           </div>
         </div>

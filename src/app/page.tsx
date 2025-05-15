@@ -19,17 +19,18 @@ import { MindMapDisplay } from "@/components/edutube/MindMapDisplay";
 import { LoadingSpinner } from "@/components/edutube/LoadingSpinner";
 import { EmbeddedVideoPlayer } from "@/components/edutube/EmbeddedVideoPlayer";
 
-import { processVideoUrl, createFlashcardsFromSummary, type ProcessedVideoData, generateAdvancedQuiz, askQuestionAboutSummary } from "./actions"; 
+import { processVideoUrl, createFlashcardsFromSummary, type ProcessedVideoData, generateAdvancedQuiz, askQuestionAboutSummary, type AnswerUserQuestionInput } from "./actions"; 
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, Sparkles, BookCheck, Languages, Settings2, MessageSquareMore, NetworkIcon, ListChecks } from "lucide-react"; 
+import { AlertTriangle, Sparkles, BookCheck, Languages, Settings2, MessageSquareMore, Network, ListChecks } from "lucide-react"; 
 import { getYouTubeVideoId } from "@/lib/youtube-utils";
 
 interface Flashcard {
+  id?: string;
   question: string;
   answer: string;
 }
@@ -40,6 +41,7 @@ const availableLanguages = [
   { value: "French", label: "Français (French)" },
   { value: "German", label: "Deutsch (German)" },
   { value: "Hindi", label: "हिन्दी (Hindi)" },
+  { value: "Nepali", label: "नेपाली (Nepali)" },
   { value: "Portuguese", label: "Português (Portuguese)" },
   { value: "Japanese", label: "日本語 (Japanese)" },
   { value: "Korean", label: "한국어 (Korean)" },
@@ -132,15 +134,15 @@ export default function EduTubePage() {
         setSummary(result.summary);
         toast({ title: "✅ Summary Generated!", description: `Summary (${selectedSummaryStyle}, ${selectedLanguage}) created.`, className: "bg-primary text-primary-foreground" });
       } else {
-        toast({ title: "⚠️ Summary Failed", description: "Could not generate summary.", variant: "destructive" });
+        toast({ title: "⚠️ Summary Failed", description: `Could not generate summary in ${selectedLanguage}.`, variant: "destructive" });
       }
 
       // Process flashcards
       if (result.flashcards && result.flashcards.length > 0) {
         setFlashcards(result.flashcards);
         toast({ title: "✨ Flashcards Ready!", description: `Flashcards in ${selectedLanguage} generated.`, className: "bg-accent text-accent-foreground" });
-      } else if (result.summary) {
-         toast({ title: "📭 Flashcard Generation Skipped/Failed", variant: "default", className: "bg-muted text-muted-foreground" });
+      } else if (result.summary) { // Only show skipped if summary succeeded
+         toast({ title: "📭 Flashcard Generation Skipped/Failed", description: `Could not generate flashcards in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
       
       // Process notes
@@ -148,15 +150,15 @@ export default function EduTubePage() {
         setNotes(result.notes);
         toast({ title: "📝 Revision Notes Ready!", description: `Detailed notes in ${selectedLanguage} generated.`, className: "bg-accent text-accent-foreground" });
       } else if (result.summary) {
-         toast({ title: "📑 Note Generation Skipped/Failed", variant: "default", className: "bg-muted text-muted-foreground" });
+         toast({ title: "📑 Note Generation Skipped/Failed", description: `Could not generate notes in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
 
       // Process chapters
       if (result.chapters && result.chapters.length > 0) {
         setChapters(result.chapters);
         toast({ title: "📚 Chapters Identified!", description: `Video chapters (titles in ${selectedLanguage}) ready.`, className: "bg-accent text-accent-foreground" });
-      } else if (!result.error || !result.error?.includes("transcript")) { 
-         toast({ title: "📖 Chapter Generation Skipped/Failed", variant: "default", className: "bg-muted text-muted-foreground" });
+      } else if (!result.error || (result.error && !result.error.includes("transcript"))) { // Don't show if transcript itself failed
+         toast({ title: "📖 Chapter Generation Skipped/Failed", description: `Could not generate chapters with titles in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
 
       // Process Key Takeaways
@@ -164,7 +166,7 @@ export default function EduTubePage() {
         setKeyTakeaways(result.keyTakeaways);
         toast({ title: "🔑 Key Takeaways Extracted!", description: `Key points in ${selectedLanguage} ready.`, className: "bg-accent text-accent-foreground" });
       } else if (result.summary) {
-        toast({ title: "📉 Key Takeaways Skipped/Failed", variant: "default", className: "bg-muted text-muted-foreground" });
+        toast({ title: "📉 Key Takeaways Skipped/Failed", description: `Could not generate key takeaways in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
 
       // Process Further Study Prompts
@@ -172,7 +174,7 @@ export default function EduTubePage() {
         setFurtherStudyPrompts(result.furtherStudyPrompts);
         toast({ title: "💡 Further Study Prompts Generated!", description: `Exploration ideas in ${selectedLanguage} ready.`, className: "bg-accent text-accent-foreground" });
       } else if (result.summary) {
-        toast({ title: "🤔 Further Study Prompts Skipped/Failed", variant: "default", className: "bg-muted text-muted-foreground" });
+        toast({ title: "🤔 Further Study Prompts Skipped/Failed", description: `Could not generate further study prompts in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
       
       // Process Mind Map Outline
@@ -180,7 +182,7 @@ export default function EduTubePage() {
         setMindMapOutline(result.mindMapOutline);
         toast({ title: "🗺️ Mind Map Outline Created!", description: `Textual mind map in ${selectedLanguage} ready.`, className: "bg-accent text-accent-foreground" });
       } else if (result.summary) {
-        toast({ title: "🕸️ Mind Map Outline Skipped/Failed", variant: "default", className: "bg-muted text-muted-foreground" });
+        toast({ title: "🕸️ Mind Map Outline Skipped/Failed", description: `Could not generate mind map outline in ${selectedLanguage}.`, variant: "default", className: "bg-muted text-muted-foreground" });
       }
 
       if (result.error) { // Partial failures
@@ -204,7 +206,7 @@ export default function EduTubePage() {
 
     if (flashcardsResult.error || !flashcardsResult.flashcards) {
       setError(flashcardsResult.error || "Error generating more flashcards.");
-      toast({ title: "Error Generating More Flashcards", description: flashcardsResult.error || "Failed to generate a new set of flashcards.", variant: "destructive" });
+      toast({ title: "Error Generating More Flashcards", description: flashcardsResult.error || `Failed to generate a new set of flashcards in ${selectedLanguage}.`, variant: "destructive" });
     } else {
       setFlashcards(flashcardsResult.flashcards); 
       toast({ title: "✨ New Flashcards Ready!", description: `A fresh set of flashcards in ${selectedLanguage} has been generated.`, className: "bg-accent text-accent-foreground" });
@@ -428,3 +430,5 @@ export default function EduTubePage() {
     </div>
   );
 }
+
+    

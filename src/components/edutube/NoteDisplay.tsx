@@ -50,7 +50,7 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Study Notes" }: NoteD
       newUtterance.onend = () => { setIsPlaying(false); setUtterance(null); };
       newUtterance.onerror = (event) => {
         console.error("SpeechSynthesisUtterance.onerror event object:", event);
-        const errorMessage = typeof event.error === 'string' ? event.error : "An unknown speech error occurred.";
+        const errorMessage = typeof event.error === 'string' ? event.error : "An unknown speech error occurred. Please ensure your browser settings allow speech synthesis.";
         toast({ title: "Speech Error", description: `Could not read notes: ${errorMessage}`, variant: "destructive" });
         setIsPlaying(false); setUtterance(null);
       };
@@ -74,9 +74,12 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Study Notes" }: NoteD
       format: "a4"
     });
     
-    const primaryColor = "#3498db"; // Calm blue from theme
-    const textColor = "#333333"; // Dark gray for text
-    const lightGrayColor = "#ecf0f1"; // Light gray for subtle elements
+    const themePrimaryColor = "#2074d4"; // A calm blue, approx HSL(207, 69%, 53%)
+    const themeWhiteColor = "#FFFFFF";
+    const themeTextColor = "#333333"; // Dark gray
+    const themeLightGrayColor = "#f0f0f0"; // For subtle backgrounds or lines
+    const themeMutedTextColor = "#555555";
+
 
     doc.setProperties({
       title: `${videoTitle} - EduTube AI Notes`,
@@ -89,65 +92,85 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Study Notes" }: NoteD
     const pageWidth = doc.internal.pageSize.width;
     const margin = 15; // mm
     const contentWidth = pageWidth - (margin * 2);
-    let yPosition = margin; 
+    let yPosition = 0; 
 
     const addHeaderAndFooter = (isFirstPage = false) => {
-      // Header
-      doc.setFontSize(10);
-      doc.setTextColor(primaryColor);
-      doc.text("EduTube AI", margin, margin - 5);
-      doc.setDrawColor(lightGrayColor);
-      doc.line(margin, margin -2, pageWidth - margin, margin - 2); // Line under EduTube AI
+      // Header Background
+      doc.setFillColor(themePrimaryColor);
+      doc.rect(0, 0, pageWidth, margin + 5, 'F'); // Full width header background
 
+      // Header Text
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(themeWhiteColor);
+      doc.text("EduTube AI", margin, margin -2);
+
+      // Footer Background
+      doc.setFillColor(themePrimaryColor);
+      doc.rect(0, pageHeight - margin, pageWidth, margin, 'F'); // Full width footer background
+      
       // Footer - Page Number
-      const pageNum = doc.getNumberOfPages(); // Use getNumberOfPages for current page in multi-page context
-      doc.setFontSize(8);
-      doc.setTextColor(textColor);
-      doc.text(`Page ${pageNum}`, pageWidth - margin, pageHeight - (margin / 2) - 2, { align: 'right' });
+      const pageNum = doc.getNumberOfPages();
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(themeWhiteColor);
+      doc.text(`Page ${pageNum}`, pageWidth - margin, pageHeight - (margin / 2) + 2, { align: 'right' });
     };
     
-    // First page setup
+    // Add first page
     addHeaderAndFooter(true);
-    yPosition += 10; // Space after header line
+    yPosition = margin + 15; // Start content below header
 
     // Main Title
     doc.setFontSize(20);
-    doc.setTextColor(primaryColor);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(themePrimaryColor);
     const mainTitleLines = doc.splitTextToSize(`Detailed Notes:`, contentWidth);
     doc.text(mainTitleLines, margin, yPosition);
-    yPosition += (mainTitleLines.length * 8) + 2; // Adjust spacing
+    yPosition += (mainTitleLines.length * 8) + 5; // Adjust spacing (8mm per line for 20pt)
 
     // Video Title
     doc.setFontSize(14);
-    doc.setTextColor(textColor);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(themeMutedTextColor);
     const videoTitleCleaned = videoTitle.replace("EduTube Study Material for ", ""); // Clean up default title
     const videoTitleLines = doc.splitTextToSize(videoTitleCleaned, contentWidth);
     doc.text(videoTitleLines, margin, yPosition);
-    yPosition += (videoTitleLines.length * 6) + 10; // Add more space after video title
+    yPosition += (videoTitleLines.length * 6) + 8; // Add more space after video title (6mm per line for 14pt)
+
+    // Content Separator Line
+    doc.setDrawColor(themeLightGrayColor);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPosition - 3, pageWidth - margin, yPosition - 3);
+    yPosition += 5;
+
 
     // Body Text
     doc.setFontSize(11);
-    doc.setTextColor(textColor); 
-    doc.setLineHeightFactor(1.4); // Improve line spacing
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(themeTextColor); 
+    doc.setLineHeightFactor(1.5); // Improve line spacing
+    
     const splitNotes = doc.splitTextToSize(notes, contentWidth); 
 
     splitNotes.forEach((line: string) => {
-      if (yPosition > pageHeight - margin - 10) { // Check for new page
+      if (yPosition > pageHeight - (margin + 10)) { // Check for new page (leave space for footer)
         doc.addPage();
-        yPosition = margin; 
-        addHeaderAndFooter(); // Add header/footer to new page
-        yPosition += 10; // Space after header line
-        doc.setFontSize(11); // Reset font size for body
-        doc.setTextColor(textColor);
-        doc.setLineHeightFactor(1.4);
+        yPosition = 0; // Reset yPosition for new page header
+        addHeaderAndFooter(); 
+        yPosition = margin + 15; // Start content below header on new page
+        doc.setFontSize(11); 
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(themeTextColor);
+        doc.setLineHeightFactor(1.5);
       }
       doc.text(line, margin, yPosition);
-      yPosition += 6; // Line height approx 6mm for 11pt font with 1.4 line height
+      yPosition += (11 * 0.352778 * 1.5); // (PointSize * mmPerPoint * lineHeightFactor)
     });
     
     const safeVideoTitle = videoTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     doc.save(`EduTubeAI_Notes_${safeVideoTitle}.pdf`);
-    toast({ title: "PDF Downloaded", description: "Your customized notes PDF has been saved."});
+    toast({ title: "🎨 Themed PDF Downloaded!", description: "Your customized notes PDF has been saved."});
   };
 
   return (
@@ -159,7 +182,7 @@ export function NoteDisplay({ notes, videoTitle = "EduTube Study Notes" }: NoteD
               <StickyNote className="mr-3 h-7 w-7 text-primary" />
               Detailed Revision Notes
             </CardTitle>
-            <CardDescription className="text-base">Key points structured for in-depth study and easy revision. Export as a themed PDF!</CardDescription>
+            <CardDescription className="text-base">Key points structured for in-depth study. Export as a themed PDF!</CardDescription>
           </div>
           <div className="flex space-x-2">
             <Button onClick={handleTextToSpeech} variant="outline" size="sm" disabled={!notes}>

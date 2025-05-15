@@ -4,15 +4,15 @@ import { getAuth } from "firebase/auth";
 // import { getFirestore } from "firebase/firestore";
 // import { getStorage } from "firebase/storage";
 
-// IMPORTANT: Replace these with your actual Firebase project configuration
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // Replace with your Firebase project's API Key
-  authDomain: "YOUR_AUTH_DOMAIN", // Replace with your Firebase project's Auth Domain
-  projectId: "YOUR_PROJECT_ID", // Replace with your Firebase project's Project ID
-  storageBucket: "YOUR_STORAGE_BUCKET", // Replace with your Firebase project's Storage Bucket
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Replace with your Firebase project's Messaging Sender ID
-  appId: "YOUR_APP_ID", // Replace with your Firebase project's App ID
-  measurementId: "YOUR_MEASUREMENT_ID" // Optional: Replace with your Firebase project's Measurement ID
+  apiKey: "AIzaSyCbIrhL7VAQiY5iCLvvYkU0b4P30mQKgpk",
+  authDomain: "edutube-ai-6ebnb.firebaseapp.com",
+  projectId: "edutube-ai-6ebnb",
+  storageBucket: "edutube-ai-6ebnb.appspot.com", // Corrected from .firebasestorage.app to .appspot.com
+  messagingSenderId: "803448006113",
+  appId: "1:803448006113:web:b738cb3a1f2c52e3ff9ea0"
+  // measurementId is optional and was not provided, so it's omitted.
 };
 
 // Initialize Firebase

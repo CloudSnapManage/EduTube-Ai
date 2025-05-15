@@ -16,7 +16,7 @@ import {z} from 'genkit';
 // Define the recursive schema for a mind map node
 const MindMapNodeSchema = z.object({
   name: z.string().describe('The name or label of this node in the mind map (in the target language).'),
-  children: z.array(z.lazy(() => MindMapNodeSchema)).optional().describe('Optional child nodes, forming a recursive tree structure.'),
+  children: z.array(z.lazy(() => MindMapNodeSchema)).optional().describe('Optional child nodes, forming a recursive tree structure. Omit this field or use an empty array [] if a node has no children.'),
 });
 export type MindMapNode = z.infer<typeof MindMapNodeSchema>;
 
@@ -34,7 +34,7 @@ export type GenerateMindMapOutlineInput = z.infer<typeof GenerateMindMapOutlineI
 
 // Output schema now directly uses the MindMapNode for the root of the tree
 const GenerateMindMapOutlineOutputSchema = z.object({
-  mindMapData: MindMapNodeSchema.nullable().describe('A hierarchical JSON structure representing the mind map. The content should be in the target language. Null if generation fails.'),
+  mindMapData: MindMapNodeSchema.nullable().describe('A hierarchical JSON structure representing the mind map. The content should be in the target language. Null if generation fails or AI determines no map can be made.'),
 });
 export type GenerateMindMapOutlineOutput = z.infer<typeof GenerateMindMapOutlineOutputSchema>;
 
@@ -45,7 +45,7 @@ export async function generateMindMapOutline(input: GenerateMindMapOutlineInput)
 const generateMindMapOutlinePrompt = ai.definePrompt({
   name: 'generateMindMapOutlinePrompt',
   input: {schema: GenerateMindMapOutlineInputSchema},
-  output: {schema: GenerateMindMapOutlineOutputSchema}, // This now expects the full JSON structure
+  output: {schema: GenerateMindMapOutlineOutputSchema},
   prompt: `You are an expert at creating structured hierarchical JSON outlines for mind maps from video content.
 Based on the following video summary{{#if chapters}} and chapter list{{/if}}, generate a JSON object representing a tree structure for a mind map.
 The content of the mind map (node names) must be in {{{targetLanguage}}}.
@@ -54,10 +54,10 @@ The root of the JSON object should be a single node representing the main video 
 The JSON structure for each node is:
 {
   "name": "Node Name (in {{{targetLanguage}}})",
-  "children": [ /* array of child node objects, or omitted if no children */ ]
+  "children": [ /* array of child node objects. Omit this field or use an empty array [] if a node has no children. */ ]
 }
 
-Example JSON Output:
+Example JSON Output (ensure this is the structure for the 'mindMapData' field):
 {
   "mindMapData": {
     "name": "Main Video Topic - in {{{targetLanguage}}}",
@@ -85,10 +85,11 @@ Example JSON Output:
 }
 
 
-Ensure the root node ('mindMapData' field in the output object) clearly states the main topic of the video.
+Ensure the root node (which will be the value of the 'mindMapData' field in the output object) clearly states the main topic of the video.
 If chapters are provided, use their titles to help structure the main branches (first-level children of the root node). If not, derive main branches from the summary.
 Keep node names concise yet descriptive. Aim for 2-4 levels of depth where appropriate.
 The output must be a single, valid JSON object where the 'mindMapData' field contains the root node of the mind map tree.
+If you cannot generate a meaningful mind map from the provided content, the value for 'mindMapData' should be null.
 
 Video Summary (this summary is already in {{{targetLanguage}}} or should be treated as such):
 {{{videoSummary}}}
@@ -100,7 +101,7 @@ Video Chapters (titles are in {{{targetLanguage}}} or should be treated as such)
 {{/each}}
 {{/if}}
 
-Generate *only* the JSON object structure defined by GenerateMindMapOutlineOutputSchema.
+Generate *only* the JSON object structure defined by GenerateMindMapOutlineOutputSchema. Do NOT wrap the JSON in markdown code fences like \`\`\`json ... \`\`\`.
 `,
 });
 
@@ -113,31 +114,65 @@ const generateMindMapOutlineFlow = ai.defineFlow(
   async (input) => {
     const {output} = await generateMindMapOutlinePrompt(input);
 
-    if (!output || !output.mindMapData) {
-      // Attempt to parse if output might be a stringified JSON (less likely now with structured output but good fallback)
+    // Check if the output is structured as expected and if mindMapData field is present
+    if (!output || typeof output.mindMapData === 'undefined') {
+      // Fallback for trying to parse if output was a string (less likely with structured output, but a safeguard)
       if (output && typeof (output as any) === 'string') {
         try {
           const parsedJson = JSON.parse(output as any);
-          // Check if the parsed JSON has the mindMapData field and if it's a valid node
-          if (parsedJson.mindMapData && MindMapNodeSchema.safeParse(parsedJson.mindMapData).success) {
-            return { mindMapData: parsedJson.mindMapData };
+          if (parsedJson.mindMapData !== undefined) { // Check if mindMapData field exists after parsing
+             // If mindMapData is explicitly null, it's a valid decision by AI
+            if (parsedJson.mindMapData === null) {
+                console.log("AI returned null for mindMapData after string parsing, indicating no mind map could be generated.");
+                return { mindMapData: null };
+            }
+            // Try to validate the parsed mindMapData
+            const validationResultFromString = MindMapNodeSchema.safeParse(parsedJson.mindMapData);
+            if (validationResultFromString.success) {
+                return { mindMapData: validationResultFromString.data };
+            } else {
+                 console.error(
+                    'Parsed string mindMapData does not match schema. Issues:',
+                    validationResultFromString.error.issues,
+                    'Parsed Data:',
+                    JSON.stringify(parsedJson.mindMapData, null, 2)
+                );
+            }
           }
         } catch (e) {
-          console.error("Failed to parse AI output as JSON for mind map or missing mindMapData field:", e);
+          console.error(
+            'Failed to parse AI output string as JSON for mind map. String received:',
+            output,
+            'Error:', e
+          );
         }
       }
-      console.error("Failed to generate valid mind map JSON data from AI. Output received:", output);
-      // Return null on failure or if validation fails, as per schema.
-      return { mindMapData: null };
+      console.error(
+        'AI output is not in the expected structured format or mindMapData field is missing. Output received:',
+        JSON.stringify(output, null, 2)
+      );
+      return {mindMapData: null};
     }
-    
-    // Validate the structure of mindMapData
+
+    // If output.mindMapData is explicitly null, the AI decided not to generate a map.
+    if (output.mindMapData === null) {
+        console.log("AI returned null for mindMapData directly, indicating no mind map could be generated.");
+        return { mindMapData: null };
+    }
+
+    // Validate the structure of mindMapData (which should be an object here)
     const validationResult = MindMapNodeSchema.safeParse(output.mindMapData);
     if (!validationResult.success) {
-        console.error("Generated mindMapData does not match schema:", validationResult.error.issues);
-        return { mindMapData: null };
+      console.error(
+        'Generated mindMapData does not match schema. Issues:',
+        validationResult.error.issues,
+        'Data received for mindMapData field:',
+        JSON.stringify(output.mindMapData, null, 2)
+      );
+      return {mindMapData: null};
     }
 
     return { mindMapData: validationResult.data };
   }
 );
+
